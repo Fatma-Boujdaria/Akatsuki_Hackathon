@@ -27,3 +27,6 @@ dist/
 
 # TypeScript build cache
 *.tsbuildinfo
+
+# dev.cmd: PIDs of the server windows it opened
+.dev-pids.json
