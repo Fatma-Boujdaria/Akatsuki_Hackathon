@@ -44,6 +44,17 @@ pip install -r requirements-dev.txt
 
 ## 2. Configure `.env`
 
+**Easiest: one command.** It generates `JWT_SECRET` and `DEVICE_API_KEY`, asks for the
+Supabase database password (hidden), tests the connection and writes `.env`:
+
+```bash
+python -m scripts.setup_env
+```
+
+No password or no internet? `python -m scripts.setup_env --sqlite` uses a local file instead.
+
+**By hand**, copy the example and fill it in:
+
 ```bash
 cp .env.example .env
 ```
