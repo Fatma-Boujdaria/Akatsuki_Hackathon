@@ -8,6 +8,7 @@ tranche change. Built for the Kizuna hackathon (Esprit).
 |-----------|-------------|------------|-----------------------------------------|
 | Backend   | `backend/`  | `backend`  | FastAPI (Python) + Supabase PostgreSQL  |
 | Frontend  | `frontend/` | `frontend` | React + Vite + Tailwind + Recharts      |
+| Mobile    | `mobile/`   | `frontend` | Flutter (Android APK)                   |
 | Hardware  | `firmware/` | —          | ESP32 + PZEM-004T + YF-S201             |
 
 The real ESP32 and the Python simulator send the same JSON to the backend, so
