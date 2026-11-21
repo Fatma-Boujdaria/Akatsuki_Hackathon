@@ -9,7 +9,7 @@ import { usePoll } from "../lib/usePoll";
 import { dateTime, num } from "../lib/format";
 import { Field, SelectField } from "../components/Field";
 import { Banner, Pill } from "../components/status";
-import { Button, Card, CardHeader, IconTile, Label, PageHeader, Segmented, Skeleton, cx } from "../components/ui";
+import { Button, ButtonLink, Card, CardHeader, IconTile, Label, PageHeader, Segmented, Skeleton, cx } from "../components/ui";
 import type { FeeRow, Resource, Settings, SpikeOut, Tariffs, TrancheRow } from "../lib/types";
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
@@ -263,7 +263,14 @@ function DemoCard({ onDone }: { onDone: () => void }) {
           <Zap size={18} strokeWidth={1.75} aria-hidden />
           {busy ? "Envoi…" : "Simuler un pic"}
         </Button>
+        <ButtonLink to="/esp" variant="secondary">
+          <Cpu size={18} strokeWidth={1.5} aria-hidden /> Contrôle ESP
+        </ButtonLink>
       </div>
+      <p className="t-small mt-3 text-mute">
+        Contrôle ESP : un boîtier virtuel dans le navigateur. Règle la puissance, le débit, les pannes et le compteur à la
+        main, sans le simulateur Python.
+      </p>
       {result && (
         <Banner tone={result.simulator_online ? "info" : "headsup"} className="mt-4" role="status">
           {result.message}

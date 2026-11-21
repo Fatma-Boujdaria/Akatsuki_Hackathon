@@ -255,3 +255,40 @@ export interface SpikeOut {
   energy_kwh: number;
   message: string;
 }
+
+// ---- Device payload (POST /api/readings), as the ESP32 sends it ----------------------
+
+export interface ReadingIn {
+  device_id: string;
+  timestamp: string; // ISO 8601 with time zone
+  electricity: {
+    voltage_v: number;
+    current_a: number;
+    power_w: number;
+    energy_kwh: number; // cumulative, never goes down
+    frequency_hz: number;
+    power_factor: number;
+  } | null; // null = the sensor did not answer
+  water: {
+    flow_l_min: number;
+    total_l: number; // cumulative, never goes down
+    pulses_delta: number;
+    calib_pulses_per_l: number;
+  } | null;
+  signal_ok: boolean;
+}
+
+export interface DemoCommand {
+  type: "spike";
+  extra_w: number;
+  duration_s: number;
+  energy_kwh: number;
+}
+
+export interface IngestOut {
+  id: number;
+  device_id: string;
+  ts: string;
+  alerts_created: number;
+  commands: DemoCommand[];
+}

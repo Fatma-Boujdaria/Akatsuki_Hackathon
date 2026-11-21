@@ -1,6 +1,8 @@
 import type {
   Alert,
   Dashboard,
+  IngestOut,
+  ReadingIn,
   Resource,
   Score,
   Series,
@@ -74,10 +76,17 @@ function errorMessage(status: number, body: unknown): string {
   return `Erreur ${status}`;
 }
 
-async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  signal?: AbortSignal,
+  deviceKey?: string,
+): Promise<T> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
-  if (token) headers.Authorization = `Bearer ${token}`;
+  if (deviceKey) headers["X-Device-Key"] = deviceKey;
+  else if (token) headers.Authorization = `Bearer ${token}`;
 
   let res: Response;
   try {
@@ -95,7 +104,8 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
   const text = await res.text();
   const data = text ? safeJson(text) : null;
   if (!res.ok) {
-    if (res.status === 401 && token && !path.startsWith("/api/auth/login")) {
+    // A refused device key must not log the user out.
+    if (res.status === 401 && token && !deviceKey && !path.startsWith("/api/auth/login")) {
       setToken(null);
       onUnauthorized?.();
     }
@@ -139,6 +149,9 @@ export const api = {
   updateSettings: (body: SettingsIn) => request<Settings>("PUT", "/api/settings", body),
   tariffs: (signal?: AbortSignal) => request<Tariffs>("GET", "/api/tariffs", undefined, signal),
   updateTariffs: (body: Tariffs) => request<Tariffs>("PUT", "/api/tariffs", body),
+  /** POST /api/readings as a device (the virtual box at /esp), with its X-Device-Key. */
+  sendReading: (payload: ReadingIn, deviceKey: string) =>
+    request<IngestOut>("POST", "/api/readings", payload, undefined, deviceKey),
   spike: (body?: { extra_w?: number; duration_s?: number; energy_kwh?: number | null }) =>
     request<SpikeOut>("POST", "/api/demo/spike", body ?? {}),
   health: () => request<{ status: string; demo_mode: boolean }>("GET", "/api/health"),

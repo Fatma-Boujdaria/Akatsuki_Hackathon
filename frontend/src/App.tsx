@@ -13,6 +13,8 @@ import { WaterPage } from "./pages/Water";
 import { AlertsPage } from "./pages/Alerts";
 import { ChallengesPage } from "./pages/Challenges";
 import { SettingsPage } from "./pages/Settings";
+import { EspPanelPage } from "./pages/EspPanel";
+import { VirtualEspProvider } from "./lib/virtualEsp";
 import type { ReactNode } from "react";
 
 function Splash() {
@@ -60,7 +62,9 @@ function RequireAuth({ children }: { children: ReactNode }) {
   if (!user) return <Navigate to="/connexion" replace state={{ from: location.pathname + location.hash }} />;
   return (
     <DataProvider>
-      <HouseholdGate>{children}</HouseholdGate>
+      <VirtualEspProvider>
+        <HouseholdGate>{children}</HouseholdGate>
+      </VirtualEspProvider>
     </DataProvider>
   );
 }
@@ -85,6 +89,7 @@ export default function App() {
               <Route path="alertes" element={<AlertsPage />} />
               <Route path="defis" element={<ChallengesPage />} />
               <Route path="reglages" element={<SettingsPage />} />
+              <Route path="esp" element={<EspPanelPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>

@@ -1,8 +1,9 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Award, Bell, Droplet, House, LogOut, SlidersVertical, Zap } from "lucide-react";
+import { Award, Bell, Cpu, Droplet, House, LogOut, SlidersVertical, Zap } from "lucide-react";
 import type { ReactNode } from "react";
 import { useData } from "../lib/data";
 import { useAuth } from "../lib/auth";
+import { useVirtualEsp } from "../lib/virtualEsp";
 import { Logo, type LogoState } from "./Logo";
 import { DevicePill, Pill } from "./status";
 import { cx } from "./ui";
@@ -59,6 +60,7 @@ function SettingsButton() {
 export function Layout() {
   const { dashboard } = useData();
   const { user, logout } = useAuth();
+  const esp = useVirtualEsp();
   const logoState = useLogoState();
   const alertCount = dashboard.data?.active_alerts.length ?? 0;
   const { pathname } = useLocation();
@@ -105,6 +107,21 @@ export function Layout() {
             ))}
           </ul>
         </nav>
+        <div className="px-3 pb-3">
+          <NavLink
+            to="/esp"
+            className={({ isActive }) =>
+              cx(
+                "flex min-h-11 items-center gap-3 rounded-ctl px-3 text-[14px] font-medium transition-colors",
+                isActive ? "bg-primary-soft text-ink [&_svg]:text-primary" : "text-mute hover:bg-sunken hover:text-ink",
+              )
+            }
+          >
+            <Cpu size={20} strokeWidth={1.5} />
+            <span className="flex-1">Contrôle ESP</span>
+            {esp.running && <span aria-label="en marche" className="tg-live-dot size-2 rounded-full bg-primary" />}
+          </NavLink>
+        </div>
         <div className="border-t border-hairline p-4">
           <p className="truncate text-[14px] font-semibold text-ink">{dashboard.data?.household_name ?? "Mon foyer"}</p>
           <p className="truncate font-mono text-[12px] text-mute">
@@ -129,6 +146,14 @@ export function Layout() {
               )}
             </div>
             <div className="flex items-center gap-1">
+              {esp.running && (
+                <NavLink to="/esp" className="mr-1" aria-label="Boîtier virtuel en marche">
+                  <Pill tone="live" icon={<Cpu size={14} strokeWidth={1.75} />}>
+                    <span className="hidden sm:inline">Boîtier virtuel</span>
+                    <span className="sm:hidden">ESP</span>
+                  </Pill>
+                </NavLink>
+              )}
               {user && (
                 <span className="mr-2 hidden max-w-[220px] truncate text-[14px] text-mute xl:inline">{user.email}</span>
               )}
