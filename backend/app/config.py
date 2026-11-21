@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     database_url: str = ""
 
     # --- Security -----------------------------------------------------------
-    jwt_secret: str = Field(min_length=16)  # required: the app refuses to start without it
+    jwt_secret: str = Field(min_length=32)  # required: the app refuses to start without it
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 12 * 60  # a demo day without logging in again
     device_api_key: str | None = None  # key of the demo simulator device (seed script)

@@ -212,8 +212,8 @@ class TariffTranche(Base):
         CheckConstraint("max_qty is null or max_qty > min_qty", name="tariff_tranches_max_check"),
         CheckConstraint("price_millimes >= 0", name="tariff_tranches_price_check"),
         CheckConstraint("vat_rate >= 0 and vat_rate < 1", name="tariff_tranches_vat_check"),
+        # The unique constraint also indexes (resource, valid_from) for the engine.
         UniqueConstraint("resource", "valid_from", "min_qty", name="tariff_tranches_unique_band"),
-        Index("tariff_tranches_resource_valid_idx", "resource", "valid_from"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -229,10 +229,7 @@ class TariffFee(Base):
     """A fee or tax. The key says what it applies to (see services/tariff.py)."""
 
     __tablename__ = "tariff_fees"
-    __table_args__ = (
-        UniqueConstraint("key", "valid_from", name="tariff_fees_key_valid_key"),
-        Index("tariff_fees_key_valid_idx", "key", "valid_from"),
-    )
+    __table_args__ = (UniqueConstraint("key", "valid_from", name="tariff_fees_key_valid_key"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     key: Mapped[str] = mapped_column(String(80))
