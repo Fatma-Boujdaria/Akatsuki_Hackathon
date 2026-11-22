@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tranche Guard Scenario and Impact</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Tokens from the team's Design Brief (blueprint section 4). Layout: one calm reading column, diagrams full width. */
+:root {
+  --bg: #F8FAFC;
+  --surface: #FFFFFF;
+  --ink: #111827;
+  --muted: #4B5563;
+  --line: #E2E8F0;
+  --primary: #0B6E4F;
+  --elec: #4F46E5;
+  --water: #0E7490;
+  --warn: #B45309;
+  --error: #B91C1C;
+  --elec-wash: rgba(79, 70, 229, 0.10);
+  --warn-wash: rgba(180, 83, 9, 0.12);
+  --primary-wash: rgba(11, 110, 79, 0.10);
+  --font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0B1220; --surface: #111A2E; --ink: #E5E7EB; --muted: #A3ACBA; --line: #26324A;
+    --primary: #34D399; --elec: #6E72F0; --water: #22B8CF; --warn: #D97706; --error: #F87171;
+    --elec-wash: rgba(110, 114, 240, 0.16); --warn-wash: rgba(217, 119, 6, 0.18); --primary-wash: rgba(52, 211, 153, 0.12);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0B1220; --surface: #111A2E; --ink: #E5E7EB; --muted: #A3ACBA; --line: #26324A;
+  --primary: #34D399; --elec: #6E72F0; --water: #22B8CF; --warn: #D97706; --error: #F87171;
+  --elec-wash: rgba(110, 114, 240, 0.16); --warn-wash: rgba(217, 119, 6, 0.18); --primary-wash: rgba(52, 211, 153, 0.12);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.6;
+}
+main { max-width: 920px; margin: 0 auto; padding: 40px 20px 64px; display: grid; gap: 48px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+h1 { font-size: 32px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 24px; line-height: 1.3; font-weight: 700; }
+h3 { font-size: 17px; line-height: 1.4; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+.lede { color: var(--muted); font-size: 18px; margin-top: 8px; }
+section { display: grid; gap: 16px; }
+.kicker { font-size: 13px; font-weight: 600; color: var(--primary); text-transform: uppercase; letter-spacing: 0.06em; }
+code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.9em; background: var(--elec-wash); padding: 1px 5px; border-radius: 4px; }
+
+/* At a glance */
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 2px; }
+.tile b { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.tile span { font-size: 14px; color: var(--muted); line-height: 1.4; }
+@media (max-width: 720px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+
+/* Figures and diagrams */
+figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: grid; gap: 12px; }
+.scroll { overflow-x: auto; }
+figure svg { display: block; width: 100%; height: auto; min-width: 640px; }
+figcaption { font-size: 14px; color: var(--muted); max-width: 72ch; }
+.dg { color: var(--ink); font-family: var(--font); }
+.dg text { fill: var(--ink); font-size: 13px; }
+.dg .sub { fill: var(--muted); font-size: 12px; }
+.dg .lbl { fill: var(--muted); font-size: 12px; }
+.dg .strong { font-weight: 600; }
+.dg .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+.dg .box-hi { fill: var(--primary-wash); stroke: var(--primary); stroke-width: 2; }
+.dg .box-warn { fill: var(--warn-wash); stroke: var(--warn); stroke-width: 1.5; }
+.dg .box-elec { fill: var(--elec-wash); stroke: var(--elec); stroke-width: 1.5; }
+.dg .arrow { stroke: var(--ink); stroke-width: 1.5; fill: none; }
+.dg .arrow-soft { stroke: var(--muted); stroke-width: 1.25; fill: none; }
+.dg .arrow-err { stroke: var(--error); stroke-width: 1.5; fill: none; }
+.dg .arrow-ok { stroke: var(--primary); stroke-width: 1.75; fill: none; }
+.dg .life { stroke: var(--line); stroke-width: 1.5; }
+.dg .mk-ink { fill: var(--ink); }
+.dg .mk-soft { fill: var(--muted); }
+.dg .mk-err { fill: var(--error); }
+.dg .mk-ok { fill: var(--primary); }
+.dg .err { fill: var(--error); font-size: 12px; font-weight: 600; }
+.dg .ok { fill: var(--primary); font-size: 12px; font-weight: 600; }
+.dg .time { fill: var(--muted); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Steps */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.step { display: grid; grid-template-columns: 44px 1fr; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.num { width: 44px; height: 44px; border-radius: 50%; background: var(--primary); color: var(--surface); display: grid; place-items: center; font-weight: 700; font-size: 18px; }
+.step p { color: var(--muted); margin-top: 4px; }
+.files { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+/* Chart */
+.chart-wrap { position: relative; }
+#billChart { min-width: 600px; cursor: crosshair; outline: none; }
+#billChart:focus-visible { outline: 2px solid var(--elec); outline-offset: 4px; border-radius: 6px; }
+#billChart .grid { stroke: var(--line); stroke-width: 1; }
+#billChart .axis-text { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+#billChart .axis-title { fill: var(--muted); font-size: 12px; font-weight: 600; }
+#billChart .series { stroke: var(--elec); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+#billChart .wash { fill: var(--elec-wash); stroke: none; }
+#billChart .jump { stroke: var(--warn); stroke-width: 2; stroke-linecap: round; }
+#billChart .jump-label { fill: var(--ink); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+#billChart .jump-sub { fill: var(--muted); font-size: 11px; }
+#billChart .zone { fill: var(--warn-wash); }
+#billChart .zone-label { fill: var(--muted); font-size: 11px; font-weight: 600; }
+#billChart .cross { stroke: var(--muted); stroke-width: 1; }
+#billChart .dot { fill: var(--elec); stroke: var(--surface); stroke-width: 2; }
+.tooltip {
+  position: absolute; pointer-events: none; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 13px; line-height: 1.4;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12); min-width: 170px; transform: translate(-50%, -110%);
+  font-variant-numeric: tabular-nums;
+}
+.tooltip[hidden] { display: none; }
+.tooltip .v { font-size: 16px; font-weight: 700; }
+.tooltip .k { color: var(--muted); }
+details { font-size: 14px; }
+summary { cursor: pointer; color: var(--elec); font-weight: 600; width: fit-content; }
+summary:focus-visible { outline: 2px solid var(--elec); outline-offset: 3px; border-radius: 4px; }
+table { border-collapse: collapse; margin-top: 10px; font-variant-numeric: tabular-nums; min-width: 420px; }
+th, td { text-align: right; padding: 6px 14px; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+th { font-size: 13px; color: var(--muted); font-weight: 600; }
+tr.jumprow td { font-weight: 700; }
+
+/* Alert cards */
+.cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (max-width: 720px) { .cards { grid-template-columns: 1fr; } }
+.card { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--sev); border-radius: 12px; padding: 16px; display: grid; gap: 8px; }
+.card .tag { font-size: 12px; font-weight: 700; color: var(--sev); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px; }
+.card .msg { font-size: 14px; background: var(--bg); border-radius: 8px; padding: 8px 10px; font-style: italic; }
+.card p { font-size: 15px; color: var(--muted); }
+
+/* Laptop checklist */
+.checks { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.check { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.pill { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.pill.done { color: var(--primary); background: var(--primary-wash); }
+.pill.fix { color: var(--warn); background: var(--warn-wash); }
+.check p { color: var(--muted); font-size: 15px; }
+.check code { white-space: nowrap; }
+
+ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 72ch; }
+footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); padding-top: 20px; }
+a { color: var(--elec); }
+a:focus-visible { outline: 2px solid var(--elec); outline-offset: 2px; }
+</style>
+<style>
+/* Storyboard additions. Layout: acts as numbered bands, scenes as cards on a timeline. */
+.act { display: grid; gap: 16px; }
+.act-head { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+.act-num { font-size: 13px; font-weight: 700; color: var(--surface); background: var(--primary); border-radius: 999px; padding: 3px 12px; }
+.scenes { list-style: none; margin: 0; padding: 0 0 0 22px; display: grid; gap: 14px; border-left: 2px solid var(--line); }
+.scene { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: grid; gap: 8px; }
+.scene::before { content: ""; position: absolute; left: -30px; top: 20px; width: 12px; height: 12px; border-radius: 50%; background: var(--sev, var(--elec)); border: 2px solid var(--bg); }
+.when { font-size: 13px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.scene p { color: var(--muted); }
+.screen { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; background: var(--bg); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+.screen .who { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sev, var(--elec)); padding-top: 2px; white-space: nowrap; }
+.screen .say { font-style: italic; }
+.does { font-size: 14px; }
+.does b { color: var(--ink); }
+.big { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 720px) { .big { grid-template-columns: 1fr; } }
+.big .tile b { font-size: 30px; }
+.big .tile em { font-style: normal; font-size: 13px; color: var(--muted); }
+.levels { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (max-width: 720px) { .levels { grid-template-columns: 1fr; } }
+.level { background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--sev); border-radius: 12px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+.level ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--muted); font-size: 15px; }
+.honest { background: var(--warn-wash); border-radius: 12px; padding: 16px 18px; display: grid; gap: 8px; }
+.honest h3 { color: var(--warn); }
+.honest ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; }
+#monthChart { min-width: 600px; cursor: crosshair; outline: none; }
+#monthChart:focus-visible { outline: 2px solid var(--elec); outline-offset: 4px; border-radius: 6px; }
+#monthChart .grid { stroke: var(--line); stroke-width: 1; }
+#monthChart .axis-text { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+#monthChart .axis-title { fill: var(--muted); font-size: 12px; font-weight: 600; }
+#monthChart .s-with { stroke: var(--elec); stroke-width: 2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+#monthChart .s-without { stroke: var(--muted); stroke-width: 2; fill: none; stroke-linejoin: round; stroke-linecap: round; opacity: 0.75; }
+#monthChart .limit { stroke: var(--warn); stroke-width: 1.5; }
+#monthChart .zone { fill: var(--warn-wash); }
+#monthChart .lbl { fill: var(--ink); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+#monthChart .lbl-muted { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+#monthChart .dot-with { fill: var(--elec); stroke: var(--surface); stroke-width: 2; }
+#monthChart .dot-without { fill: var(--muted); stroke: var(--surface); stroke-width: 2; }
+#monthChart .mark { fill: var(--warn); stroke: var(--surface); stroke-width: 2; }
+#monthChart .cross { stroke: var(--muted); stroke-width: 1; }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { display: inline-block; width: 18px; height: 2px; border-radius: 2px; }
+pre.copy { margin: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.5; overflow-x: auto; white-space: pre; }
+.copybtn { justify-self: start; font: inherit; font-size: 13px; font-weight: 600; color: var(--elec); background: var(--elec-wash); border: 0; border-radius: 8px; padding: 6px 12px; cursor: pointer; min-height: 32px; }
+.copybtn:focus-visible { outline: 2px solid var(--elec); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <div class="kicker">Kizuna hackathon · Akatsuki team · pitch scenario</div>
+  <h1>From the box on the wall to the money saved</h1>
+  <p class="lede">The 3D tour shows where the sensors go. This continues the story: a family lives with Tranche Guard for a month, and we measure what changes.</p>
+</header>
+
+<section>
+  <div class="kicker">The family</div>
+  <h2>Meet the Ben Salah home</h2>
+  <p>A family of four near Tunis. Subscribed power 6 kVA, an electric water heater, one air conditioner, a classic SONEDE meter. Like most Tunisian homes, they only see their consumption when the bill arrives, too late to act. (Fictional family; every number below is computed with the app's own tariff engine and labelled as an estimate.)</p>
+</section>
+
+<!-- ACT 1 -->
+<section class="act">
+  <div class="act-head"><span class="act-num">Act 1</span><h2>Installation (your 3D tour, 0:00 to 0:57)</h2></div>
+  <p>A clamp around the phase wire, a flow sensor after the SONEDE meter, one ESP32 box. Nothing touched on the STEG or SONEDE side. The box starts posting a reading every 5 seconds. The month already stands at <strong>182 kWh</strong>.</p>
+</section>
+
+<!-- ACT 2 -->
+<section class="act">
+  <div class="act-head"><span class="act-num">Act 2</span><h2>Living with Tranche Guard</h2></div>
+  <ol class="scenes">
+    <li class="scene" style="--sev: var(--warn)">
+      <div class="when">Day 1 · 19:40</div>
+      <h3>The evening peak</h3>
+      <p>The air conditioner and the oven run together. Power jumps to 5.6 kW, close to the 6 kVA limit. The month climbs to 191 kWh.</p>
+      <div class="screen"><span class="who">Phone alert</span><span class="say">"Encore 9 kWh avant la tranche suivante (200 kWh). La franchir coûterait environ 9,23 DT de plus sur ta facture du mois (estimation)."</span></div>
+      <p class="does"><b>What they do:</b> open the tip, delay the oven to tomorrow lunch, set the AC to 26 °C.</p>
+    </li>
+    <li class="scene" style="--sev: var(--error)">
+      <div class="when">Day 2 · 03:00</div>
+      <h3>The water that never stops</h3>
+      <p>The toilet flapper leaks: 0.35 L/min, silent, all night. The flow never drops to zero between 01:00 and 03:00.</p>
+      <div class="screen"><span class="who">Phone alert</span><span class="say">"Fuite probable : l'eau coule sans arrêt depuis 01:00 (2 h 00), environ 42 L utilisés. Vérifie la chasse d'eau et les robinets."</span></div>
+      <p class="does"><b>What they do:</b> replace the flapper the next morning (a few dinars at the hardware store). Without the alert, this leak wastes <b>504 L a day, about 15 m³ a month</b>, and would only show on the SONEDE bill months later.</p>
+    </li>
+    <li class="scene" style="--sev: var(--elec)">
+      <div class="when">Month 2 · day 10</div>
+      <h3>The forecast warns early</h3>
+      <p>New month. At their usual 7.2 kWh a day, the forecast says the month will end at 216 kWh, over the 200 kWh tranche.</p>
+      <div class="screen"><span class="who">Phone alert</span><span class="say">"Au rythme actuel, tu vas dépasser 200 kWh ce mois-ci (prévision : 216 kWh). Passer cette tranche coûterait environ 9,23 DT de plus (estimation)."</span></div>
+      <div class="screen"><span class="who">Tip</span><span class="say">"Pour rester sous 200 kWh, réduis d'environ 18 kWh d'ici la fin du mois (≈ 0,9 kWh par jour). Économie estimée : 13,28 DT."</span></div>
+      <p class="does"><b>What they do:</b> put the water heater on a timer (heat once, at night), unplug the TV box and chargers at night. About 0.9 kWh less per day, without discomfort.</p>
+    </li>
+    <li class="scene" style="--sev: var(--primary)">
+      <div class="when">Month 2 · every day</div>
+      <h3>The game keeps them going</h3>
+      <p>The daily score stays above 80, the weekly challenge (5 % less than last week) is won, and two badges unlock: <em>Journée sobre</em> and <em>Zéro fuite</em>. The kids check the score on the phone.</p>
+    </li>
+    <li class="scene" style="--sev: var(--primary)">
+      <div class="when">Month 2 · day 30</div>
+      <h3>The bill</h3>
+      <p>The month closes at <strong>198 kWh</strong>, still in tranche 1. Estimated bill <strong>43.47 DT</strong> instead of <strong>56.74 DT</strong> on the old path.</p>
+      <div class="screen"><span class="who">Score screen</span><span class="say">"Mois terminé sous 200 kWh : environ 13,28 DT économisés (estimation)."</span></div>
+    </li>
+  </ol>
+
+  <figure>
+    <div class="legend" aria-hidden="true">
+      <span><i style="background: var(--muted)"></i>Without Tranche Guard (usual rhythm)</span>
+      <span><i style="background: var(--elec)"></i>With Tranche Guard (−0.9 kWh/day from day 10)</span>
+    </div>
+    <div class="scroll">
+      <div class="chart-wrap" id="monthWrap">
+        <svg id="monthChart" viewBox="0 0 760 360" role="img" tabindex="0"
+             aria-label="Month 2, kWh used since the 1st. Without the app the month ends at 216 kWh and costs 56.74 DT. With the app, after the forecast alert on day 10, it ends at 198 kWh and costs 43.47 DT. The 200 kWh tranche limit is the line in between."></svg>
+        <div class="tooltip" id="monthTip" hidden></div>
+      </div>
+    </div>
+    <figcaption>Month 2, kWh used since the 1st (6 kVA home, STEG prices from the specification, estimate). The alert on day 10 leaves 20 days to cut 18 kWh, under 1 kWh a day. Hover or use the arrow keys to read each day.</figcaption>
+  </figure>
+</section>
+
+<!-- ACT 3 -->
+<section class="act">
+  <div class="act-head"><span class="act-num">Act 3</span><h2>The impact</h2></div>
+  <div class="big" aria-label="Impact for the family">
+    <div class="tile"><b>−13.28 DT</b><span>on month 2's bill</span><em>−23 % of the bill for −8 % of the kWh</em></div>
+    <div class="tile"><b>−51.34 DT</b><span>in a summer month with AC</span><em>forecast 312 kWh, kept at 296: only −5 % kWh</em></div>
+    <div class="tile"><b>15 m³</b><span>of water a month</span><em>one silent leak found the first night</em></div>
+  </div>
+  <p>Why so much money for so few kWh? Because of the tranche jump: crossing 200 kWh by one kWh adds 9.23 DT, crossing 300 kWh adds 46.02 DT (price and VAT both rise). Tranche Guard's job is to see the jump coming early enough to avoid it with small changes.</p>
+
+  <div class="levels">
+    <div class="level" style="--sev: var(--primary)">
+      <h3>For the household</h3>
+      <ul>
+        <li>The bill becomes visible and predictable, every day, in dinars.</li>
+        <li>About 180 DT a year for a home that sits near a threshold (6 months like month 2 and 2 summer months, an illustration, not a promise).</li>
+        <li>Leaks fixed in hours instead of months.</li>
+        <li>Never punitive: the score has a floor and the goals are realistic.</li>
+      </ul>
+    </div>
+    <div class="level" style="--sev: var(--elec)">
+      <h3>For STEG and the grid</h3>
+      <ul>
+        <li>Homes shift the water heater out of the evening peak: about 2 kW per home at the worst hour.</li>
+        <li>Pilot of 1,000 homes: up to 2 MW less on the evening peak if they all shift (hypothesis to measure).</li>
+        <li>Anonymized, aggregated data on when peaks happen, street by street.</li>
+        <li>Next step: "peak day" events where opted-in homes delay big loads together.</li>
+      </ul>
+    </div>
+    <div class="level" style="--sev: var(--water)">
+      <h3>For SONEDE and water</h3>
+      <ul>
+        <li>One toilet leak = 504 L a day. Found the first night instead of at the next bill.</li>
+        <li>Water is scarce in Tunisia: every leak fixed early is water left in the dams.</li>
+        <li>Water tranche alerts switch on as soon as the SONEDE grid is entered.</li>
+      </ul>
+    </div>
+    <div class="level" style="--sev: var(--warn)">
+      <h3>For the country</h3>
+      <ul>
+        <li>Less electricity at the peak means less gas burned to produce it.</li>
+        <li>Built from cheap parts (ESP32, PZEM-004T, YF-S201) and open software: affordable for Tunisian homes.</li>
+        <li>The same platform could later read STEG smart meters instead of our box.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="honest">
+    <h3>What we say honestly to the jury</h3>
+    <ul>
+      <li>The savings above assume the tranche price applies to every kWh of the month (blueprint formula). If STEG prices progressively, month 2 saves 4.29 DT, not 13.28: we check this on a real bill.</li>
+      <li>Real-time feedback studies report 5 to 15 % less consumption: an order of magnitude to source, not a promise.</li>
+      <li>The box measures within about 2 to 5 %. It is an estimate tool, not a billing meter.</li>
+      <li>The family and the 1,000-home pilot are illustrations.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">Closing line for the pitch</div>
+  <h2>"Tranche Guard doesn't ask Tunisian families to consume much less. It shows them the 1 kWh that costs 9 dinars, before they use it."</h2>
+</section>
+
+<!-- Appendix: captions for the 3D tour -->
+<section>
+  <div class="kicker">For the 3D team</div>
+  <h2>Act 2 captions, in your tour.js format</h2>
+  <p>Ready to paste after the last caption of <code>CAPTIONS</code> in <code>sim3d/tour.js</code> (times continue after 57 s). The peak and leak scenes can reuse your existing <code>peak</code> and <code>water: 'leak'</code> script steps.</p>
+  <figure>
+    <pre class="copy" id="captions">  [57.0, 'Day 1, 19:40: the evening peak', 'AC and oven together: 5.6 kW. The month reaches 191 kWh and the phone warns: 9 kWh left, crossing 200 would cost about 9.23 DT more (estimate).'],
+  [63.0, 'Day 2, 03:00: a silent leak', 'The toilet flapper leaks 0.35 L/min. After 2 hours of flow between 01:00 and 05:00, Tranche Guard sends a leak alert: about 504 L a day saved once fixed.'],
+  [69.0, 'Month 2, day 10: the forecast', 'At 7.2 kWh a day the month would end at 216 kWh. The tip: about 0.9 kWh less per day, water heater on a timer, standby off at night.'],
+  [75.0, 'Month 2, day 30: the bill', '198 kWh, still tranche 1: about 43.47 DT instead of 56.74 DT. 13.28 DT saved for 8 % fewer kWh (estimate).'],
+  [81.0, 'The impact', 'For the family: a predictable bill and leaks fixed in hours. For STEG: water heaters moved out of the evening peak. For Tunisia: less gas burned, less water lost.'],</pre>
+    <button class="copybtn" id="copyBtn" type="button">Copy the captions</button>
+  </figure>
+</section>
+
+<footer>Numbers computed with the backend's tariff engine (<code>backend/app/services/tariff.py</code>): 6 kVA, 176 / 218 / 341 / 414 millimes per kWh, VAT 7 % up to 300 kWh and 13 % above, 0.700 DT per kVA, 0.010 DT per kWh of taxes. All bill figures are estimates.</footer>
+
+</main>
+
+<script>
+(function () {
+  // Same STEG grid and formula as the backend, 6 kVA.
+  var T = [{max: 200, p: 176, v: 0.07}, {max: 300, p: 218, v: 0.07}, {max: 500, p: 341, v: 0.13}, {max: null, p: 414, v: 0.13}];
+  function bill(e) {
+    var t = T.find(function (x) { return x.max === null || e <= x.max; });
+    return (6 * 700 + e * t.p * (1 + t.v) + e * 10) / 1000;
+  }
+  function fmt(n, d) { return n.toLocaleString("en-US", {minimumFractionDigits: d, maximumFractionDigits: d}); }
+  var DAYS = 30, RATE = 7.2, CUT = 0.9, ALERT_DAY = 10;
+  function without(d) { return RATE * d; }
+  function withApp(d) { return d <= ALERT_DAY ? RATE * d : RATE * ALERT_DAY + (RATE - CUT) * (d - ALERT_DAY); }
+
+  var NS = "http://www.w3.org/2000/svg", svg = document.getElementById("monthChart");
+  var W = 760, H = 360, L = 52, R = 150, TOP = 22, B = 48, PW = W - L - R, PH = H - TOP - B, YMAX = 240;
+  function x(d) { return L + d / DAYS * PW; }
+  function y(k) { return TOP + PH - k / YMAX * PH; }
+  function el(tag, a, text) {
+    var n = document.createElementNS(NS, tag);
+    for (var k in a) n.setAttribute(k, a[k]);
+    if (text !== undefined) n.textContent = text;
+    svg.appendChild(n);
+    return n;
+  }
+  el("rect", {"class": "zone", x: L, y: y(200), width: PW, height: y(190) - y(200)});
+  for (var k = 0; k <= YMAX; k += 40) {
+    el("line", {"class": "grid", x1: L, x2: L + PW, y1: y(k), y2: y(k)});
+    el("text", {"class": "axis-text", x: L - 8, y: y(k) + 4, "text-anchor": "end"}, String(k));
+  }
+  [1, 5, 10, 15, 20, 25, 30].forEach(function (d) {
+    el("text", {"class": "axis-text", x: x(d), y: TOP + PH + 20, "text-anchor": "middle"}, String(d));
+  });
+  el("text", {"class": "axis-title", x: L + PW / 2, y: H - 8, "text-anchor": "middle"}, "Day of the month");
+  el("text", {"class": "axis-title", x: 14, y: TOP + PH / 2, "text-anchor": "middle", transform: "rotate(-90 14 " + (TOP + PH / 2) + ")"}, "kWh used since the 1st");
+  el("line", {"class": "limit", x1: L, x2: L + PW, y1: y(200), y2: y(200)});
+  el("text", {"class": "lbl", x: L + 6, y: y(200) - 6}, "200 kWh: tranche 2 starts");
+
+  function path(fn) {
+    var d = "";
+    for (var i = 0; i <= DAYS; i++) d += (i ? " L" : "M") + x(i) + "," + y(fn(i));
+    return d;
+  }
+  el("path", {"class": "s-without", d: path(without)});
+  el("path", {"class": "s-with", d: path(withApp)});
+  // Day-10 alert marker.
+  el("circle", {"class": "mark", cx: x(ALERT_DAY), cy: y(withApp(ALERT_DAY)), r: 6});
+  el("text", {"class": "lbl", x: x(ALERT_DAY) + 10, y: y(withApp(ALERT_DAY)) + 18}, "Day 10: forecast alert (216 kWh)");
+  // End labels.
+  el("circle", {"class": "dot-without", cx: x(DAYS), cy: y(without(DAYS)), r: 5});
+  el("text", {"class": "lbl", x: x(DAYS) + 10, y: y(without(DAYS)) - 2}, "216 kWh");
+  el("text", {"class": "lbl-muted", x: x(DAYS) + 10, y: y(without(DAYS)) + 13}, fmt(bill(216), 2) + " DT");
+  el("circle", {"class": "dot-with", cx: x(DAYS), cy: y(withApp(DAYS)), r: 5});
+  el("text", {"class": "lbl", x: x(DAYS) + 10, y: y(withApp(DAYS)) + 22}, "198 kWh");
+  el("text", {"class": "lbl-muted", x: x(DAYS) + 10, y: y(withApp(DAYS)) + 37}, fmt(bill(198), 2) + " DT");
+
+  var cross = el("line", {"class": "cross", y1: TOP, y2: TOP + PH, x1: 0, x2: 0, visibility: "hidden"});
+  var d1 = el("circle", {"class": "dot-without", r: 4, visibility: "hidden"});
+  var d2 = el("circle", {"class": "dot-with", r: 4, visibility: "hidden"});
+  var hit = el("rect", {x: L, y: TOP, width: PW, height: PH, fill: "transparent"});
+  var tip = document.getElementById("monthTip"), wrap = document.getElementById("monthWrap"), cur = 10;
+  function row(text, cls) { var n = document.createElement("div"); n.textContent = text; if (cls) n.className = cls; tip.appendChild(n); }
+  function show(day) {
+    cur = Math.max(0, Math.min(DAYS, Math.round(day)));
+    var a = withApp(cur), b = without(cur);
+    cross.setAttribute("x1", x(cur)); cross.setAttribute("x2", x(cur));
+    d1.setAttribute("cx", x(cur)); d1.setAttribute("cy", y(b));
+    d2.setAttribute("cx", x(cur)); d2.setAttribute("cy", y(a));
+    [cross, d1, d2].forEach(function (n) { n.setAttribute("visibility", "visible"); });
+    tip.textContent = "";
+    row("Day " + cur, "k");
+    row(fmt(a, 1) + " kWh with the app", "v");
+    row(fmt(b, 1) + " kWh without");
+    var box = svg.getBoundingClientRect(), wb = wrap.getBoundingClientRect(), s = box.width / W;
+    tip.style.left = (box.left - wb.left + x(cur) * s) + "px";
+    tip.style.top = (box.top - wb.top + y(b) * s - 8) + "px";
+    tip.hidden = false;
+  }
+  function hide() { [cross, d1, d2].forEach(function (n) { n.setAttribute("visibility", "hidden"); }); tip.hidden = true; }
+  hit.addEventListener("pointermove", function (ev) {
+    var box = svg.getBoundingClientRect();
+    show(((ev.clientX - box.left) * (W / box.width) - L) / PW * DAYS);
+  });
+  hit.addEventListener("pointerleave", hide);
+  svg.addEventListener("focus", function () { show(cur); });
+  svg.addEventListener("blur", hide);
+  svg.addEventListener("keydown", function (ev) {
+    if (ev.key === "ArrowRight") { show(cur + 1); ev.preventDefault(); }
+    if (ev.key === "ArrowLeft") { show(cur - 1); ev.preventDefault(); }
+  });
+
+  var btn = document.getElementById("copyBtn");
+  btn.addEventListener("click", function () {
+    var text = document.getElementById("captions").textContent;
+    try {
+      navigator.clipboard.writeText(text).then(function () { btn.textContent = "Copied"; }, function () { btn.textContent = "Select the text above and copy it"; });
+    } catch (e) { btn.textContent = "Select the text above and copy it"; }
+  });
+})();
+</script>
+</body>
+</html>
