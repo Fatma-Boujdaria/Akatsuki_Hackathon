@@ -14,6 +14,7 @@ import '../widgets/logo.dart';
 import '../widgets/status.dart';
 import '../widgets/ui.dart';
 import 'alerts_screen.dart';
+import 'assistant_screen.dart';
 import 'households_screen.dart';
 import 'onboarding_screen.dart';
 import 'settings_screen.dart';
@@ -274,6 +275,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           for (final a in banners) _banner(a),
           if (topTip != null) _TipCard(tip: topTip),
+          LinkCard(
+            icon: LucideIcons300.sparkles,
+            tone: Tone.elec,
+            title: L('Demande à l\'assistant', 'Ask the assistant', 'اسأل المساعد'),
+            sub: L('« Combien vais-je payer ce mois-ci ? »', '"How much will I pay this month?"', '« قداش باش نخلص الشهر هذا؟ »'),
+            onTap: () => _push(const AssistantScreen()),
+          ),
           LinkCard(
             icon: LucideIcons300.trophy,
             tone: Tone.success,

@@ -7,6 +7,7 @@ import '../util/format.dart';
 import '../util/i18n.dart';
 import '../widgets/fields.dart';
 import '../widgets/ui.dart';
+import 'assistant_screen.dart';
 import 'history_screen.dart';
 import 'households_screen.dart';
 import 'settings_screen.dart';
@@ -58,6 +59,11 @@ class ProfileScreen extends StatelessWidget {
         ),
         SectionLabel(L('Mon espace', 'My space', 'فضائي')),
         ListGroup(children: [
+          ListRow(
+            icon: LucideIcons300.sparkles,
+            label: L('Assistant IA', 'AI assistant', 'المساعد الذكي'),
+            onTap: () => push(const AssistantScreen()),
+          ),
           ListRow(
             icon: LucideIcons300.bell,
             label: L('Alertes et notifications', 'Alerts and notifications', 'التنبيهات'),
