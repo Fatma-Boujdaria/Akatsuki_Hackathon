@@ -77,7 +77,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     checking = true;
     notifyListeners();
     try {
-      user = await api.me();
+      _adoptUser(await api.me());
       _startPolling();
     } catch (_) {
       // Expired token or server unreachable: back to the login screen.
@@ -96,14 +96,41 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
-  Future<void> login(String server, String email, String password) async {
-    setServer(server);
-    final (token, u) = await api.login(email.trim(), password);
+  /// remember = false keeps the session until the app is closed ("Se souvenir de moi" off).
+  Future<void> login(String email, String password, {bool remember = true}) async {
+    final (token, u) = await api.login(email.trim(), password, remember: remember);
+    acceptToken(token, u, remember: remember);
+  }
+
+  /// A token from the login, the e-mail check or a password change.
+  void acceptToken(String token, User u, {bool remember = true}) {
     api.token = token;
-    user = u;
-    await _prefs.setString('server', api.baseUrl);
-    await _prefs.setString('token', token);
+    if (remember) {
+      _prefs.setString('token', token);
+    } else {
+      _prefs.remove('token');
+    }
+    _adoptUser(u);
     _startPolling();
+    notifyListeners();
+  }
+
+  /// The account's language wins over the phone's last choice.
+  void _adoptUser(User u) {
+    user = u;
+    final l = u.language;
+    if (l == 'fr' || l == 'en' || l == 'ar') {
+      final lang = Lang.parse(l);
+      if (lang != language) {
+        language = lang;
+        setCurrentLang(lang);
+        _prefs.setString('lang', lang.name);
+      }
+    }
+  }
+
+  void setUser(User u) {
+    user = u;
     notifyListeners();
   }
 
@@ -140,6 +167,10 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     setCurrentLang(l);
     _prefs.setString('lang', l.name);
     notifyListeners();
+    // Also saved in the account; the phone keeps the choice if that fails.
+    if (user != null) {
+      api.updateMe(language: l.name).then((u) => user = u).catchError((_) => user!);
+    }
   }
 
   void snooze(String alertId) {

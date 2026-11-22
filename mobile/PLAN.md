@@ -10,7 +10,7 @@ checked on the USB phone (SM A175F) with `adb reverse tcp:8000 tcp:8000`.
 - [x] 2. API layer for the new endpoints (+ X-Household-Id, error codes) and models
       | verify: flutter test (model parsing tests)
       | files: api/api.dart, api/models.dart, test/
-- [ ] 3. Auth: login with "remember me" and unverified e-mail, register + code, resend,
+- [x] 3. Auth: login with "remember me" and unverified e-mail, register + code, resend,
       forgot / reset password
       | verify: on phone, register a test account with the on-screen demo code, reset its password
       | files: screens/auth/*

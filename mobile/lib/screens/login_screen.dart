@@ -1,12 +1,14 @@
 import 'package:lucide_icons_flutter/lucide_icons_300.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../api/api.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../util/i18n.dart';
 import '../widgets/fields.dart';
 import '../widgets/status.dart';
 import '../widgets/ui.dart';
+import 'auth_screens.dart';
 
 /// "Connexion" artboard of the design. The server address (phone app only) sits in a
 /// small row under the form, so the screen keeps the design's look.
@@ -20,6 +22,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _busy = false;
+  bool _remember = true;
+  bool _unverified = false;
   String? _error;
 
   @override
@@ -35,14 +39,25 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _busy = true;
       _error = null;
+      _unverified = false;
     });
     try {
-      await app.login(app.server, _email.text, _password.text);
+      await app.login(_email.text, _password.text, remember: _remember);
     } catch (e) {
-      if (mounted) setState(() => _error = '$e');
+      if (mounted) {
+        setState(() {
+          _error = '$e';
+          _unverified = e is ApiException && e.code == 'email_not_verified';
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  void _push(Widget screen) {
+    setState(() => _error = null);
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
   Future<void> _editServer() async {
@@ -84,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Wrap(crossAxisAlignment: WrapCrossAlignment.center, alignment: WrapAlignment.center, children: [
           Text(L('Pas encore de compte ?', 'No account yet?', 'ما عندكش حساب؟'), style: T.small(tg.mute).copyWith(fontSize: 14)),
           const SizedBox(width: 4),
-          TextLink(L('Créer un compte', 'Create an account', 'اعمل حساب'), bold: true, onTap: () {}),
+          TextLink(L('Créer un compte', 'Create an account', 'اعمل حساب'), bold: true, onTap: () => _push(const RegisterScreen())),
         ]),
         InkWell(
           onTap: _editServer,
@@ -124,13 +139,33 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ]),
         ),
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: TextLink(L('Mot de passe oublié ?', 'Forgot password?', 'نسيت كلمة السر؟'), onTap: () {}),
-        ),
+        const SizedBox(height: 6),
+        Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          CheckboxField(
+            label: L('Se souvenir de moi', 'Remember me', 'تفكّرني'),
+            value: _remember,
+            onChanged: (v) => setState(() => _remember = v),
+          ),
+          TextLink(
+            L('Mot de passe oublié ?', 'Forgot password?', 'نسيت كلمة السر؟'),
+            onTap: () => _push(ForgotPasswordScreen(email: _email.text.trim())),
+          ),
+        ]),
         if (_error != null) ...[
           const SizedBox(height: 8),
-          TgBanner(tone: BannerTone.broken, child: Text(_error!)),
+          TgBanner(
+            tone: BannerTone.broken,
+            actions: _unverified
+                ? [
+                    Btn(
+                      L('Saisir mon code', 'Enter my code', 'دخّل الكود'),
+                      kind: BtnKind.secondary,
+                      onPressed: () => _push(RegisterScreen(verifyEmail: _email.text.trim())),
+                    ),
+                  ]
+                : null,
+            child: Text(_error!),
+          ),
         ],
         const SizedBox(height: 16),
         Btn(
