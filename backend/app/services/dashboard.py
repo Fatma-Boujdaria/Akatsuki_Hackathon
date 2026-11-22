@@ -146,6 +146,7 @@ def build_dashboard(db: Session, household: Household, now: datetime) -> Dashboa
     return DashboardOut(
         generated_at=now,
         state="ok" if latest else "empty",
+        household_id=household.id,
         household_name=household.name,
         subscribed_kva=float(household.subscribed_kva),
         device=device_status(device, now) if device else None,

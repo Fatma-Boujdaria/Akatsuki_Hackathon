@@ -13,6 +13,14 @@ A few columns were added to the blueprint, each marked "(added)":
 - households.leak_* and active_device_id: adjustable leak rule, demo switch.
 - alerts.severity / dedupe_key: banner level, "fires once per threshold".
 - tips.code, scores.kwh / budget_kwh: let the frontend pick icons and explain.
+
+Second phase (full application, see supabase/migrations/20261122010811_full_app.sql):
+- users: full name, language, account status, email verification, token
+  version (log out everywhere), notification preferences.
+- households: address, occupants, onboarding flag (several homes per account).
+- alerts.params / tips.params: the numbers of the message, so the app can
+  show it in French, English or Tunisian Arabic.
+- appliances, auth_codes, support_tickets, tariff_audit: new tables.
 """
 
 import uuid
@@ -27,12 +35,14 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     Numeric,
     String,
     Text,
     UniqueConstraint,
     Uuid,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app import clock
@@ -45,6 +55,13 @@ RESOURCES = ("electricity", "water")
 ALERT_TYPES = ("threshold", "leak", "device_offline", "sensor_fault")
 SEVERITIES = ("info", "warning", "critical")
 TIP_SOURCES = ("rule", "llm")
+LANGUAGES = ("fr", "en", "ar")
+USER_STATUSES = ("active", "suspended")
+CODE_PURPOSES = ("verify_email", "reset_password")
+TICKET_STATUSES = ("open", "answered", "closed")
+# jsonb on PostgreSQL (Supabase), JSON text on SQLite.
+JsonType = JSON().with_variant(JSONB(), "postgresql")
+DEFAULT_NOTIFY_PREFS = {"threshold": True, "leak": True, "device": True, "tips": True, "push": False}
 
 
 def _in(column: str, values: tuple[str, ...]) -> str:
@@ -53,13 +70,27 @@ def _in(column: str, values: tuple[str, ...]) -> str:
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = (CheckConstraint(_in("role", ROLES), name="users_role_check"),)
+    __table_args__ = (
+        CheckConstraint(_in("role", ROLES), name="users_role_check"),
+        CheckConstraint(_in("language", LANGUAGES), name="users_language_check"),
+        CheckConstraint(_in("status", USER_STATUSES), name="users_status_check"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(20), default="household")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_utc)
+    # (added, phase 2)
+    full_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    language: Mapped[str] = mapped_column(String(2), default="fr")
+    status: Mapped[str] = mapped_column(String(12), default="active")  # admin can suspend
+    # Accounts created before sign-up existed (seed, tests) count as verified.
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Bumped on password change / "log out everywhere": older tokens stop working.
+    token_version: Mapped[int] = mapped_column(Integer, default=0)
+    notify_prefs: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     households: Mapped[list["Household"]] = relationship(back_populates="user")
 
@@ -85,6 +116,10 @@ class Household(Base):
     # (added) Which device feeds the dashboard. NULL = all devices of the home.
     active_device_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_utc)
+    # (added, phase 2)
+    address: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    occupants: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    onboarding_done: Mapped[bool] = mapped_column(Boolean, default=True)
 
     user: Mapped[User] = relationship(back_populates="households")
     devices: Mapped[list["Device"]] = relationship(back_populates="household")
@@ -160,6 +195,8 @@ class Alert(Base):
     dedupe_key: Mapped[str | None] = mapped_column(String(160), nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_utc)
     acknowledged_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    # (added, phase 2) Numbers of the message, for the translated text in the app.
+    params: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
 
 
 class Tip(Base):
@@ -175,6 +212,7 @@ class Tip(Base):
     saving_dt: Mapped[float | None] = mapped_column(Numeric(10, 3, asdecimal=False), nullable=True)
     source: Mapped[str] = mapped_column(String(10), default="rule")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_utc)
+    params: Mapped[dict | None] = mapped_column(JsonType, nullable=True)  # (added, phase 2)
 
 
 class Score(Base):
@@ -235,3 +273,87 @@ class TariffFee(Base):
     key: Mapped[str] = mapped_column(String(80))
     value_millimes: Mapped[float] = mapped_column(Numeric(12, 3, asdecimal=False))
     valid_from: Mapped[date] = mapped_column(Date)
+
+
+# --- Phase 2 tables ----------------------------------------------------------------------
+
+
+class Appliance(Base):
+    """An appliance the household declared. A profile, never a measurement."""
+
+    __tablename__ = "appliances"
+    __table_args__ = (
+        CheckConstraint("quantity between 1 and 100", name="appliances_quantity_check"),
+        CheckConstraint("power_w is null or (power_w > 0 and power_w <= 20000)", name="appliances_power_check"),
+        CheckConstraint(
+            "hours_per_day is null or (hours_per_day >= 0 and hours_per_day <= 24)", name="appliances_hours_check"
+        ),
+        CheckConstraint("start_hour is null or start_hour between 0 and 23", name="appliances_start_check"),
+        CheckConstraint("end_hour is null or end_hour between 0 and 23", name="appliances_end_check"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    household_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("households.id", ondelete="CASCADE"), index=True
+    )
+    category: Mapped[str] = mapped_column(String(40))  # air_conditioner, fridge... or "custom"
+    name: Mapped[str] = mapped_column(String(80))
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    power_w: Mapped[float | None] = mapped_column(Float, nullable=True)  # NULL: typical value used
+    hours_per_day: Mapped[float | None] = mapped_column(Float, nullable=True)  # NULL: typical value used
+    start_hour: Mapped[int | None] = mapped_column(Integer, nullable=True)  # typical operating hours
+    end_hour: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_utc)
+
+
+class AuthCode(Base):
+    """One-time code sent by email (verify the address, reset the password). Stored hashed."""
+
+    __tablename__ = "auth_codes"
+    __table_args__ = (
+        CheckConstraint(_in("purpose", CODE_PURPOSES), name="auth_codes_purpose_check"),
+        Index("auth_codes_user_purpose_idx", "user_id", "purpose"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    purpose: Mapped[str] = mapped_column(String(20))
+    code_hash: Mapped[str] = mapped_column(String(64))
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    used_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_utc)
+
+
+class SupportTicket(Base):
+    __tablename__ = "support_tickets"
+    __table_args__ = (
+        CheckConstraint(_in("status", TICKET_STATUSES), name="support_tickets_status_check"),
+        Index("support_tickets_created_idx", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    # SET NULL: a ticket stays readable for support after the account is deleted.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    email: Mapped[str] = mapped_column(String(255))
+    category: Mapped[str] = mapped_column(String(30))  # problem, question, feedback, device
+    subject: Mapped[str] = mapped_column(String(150))
+    message: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(12), default="open")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_utc)
+
+
+class TariffAudit(Base):
+    """Every tariff change: who made it, before and after (blueprint: audit log)."""
+
+    __tablename__ = "tariff_audit"
+
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True
+    )
+    admin_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    admin_email: Mapped[str] = mapped_column(String(255))
+    summary: Mapped[str] = mapped_column(Text)
+    before: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
+    after: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_utc)

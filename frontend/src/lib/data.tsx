@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { api } from "./api";
-import type { Dashboard, Settings } from "./types";
+import type { Dashboard, Insights, Settings } from "./types";
 import { usePoll, type PollState } from "./usePoll";
 import { trancheView, type TrancheView } from "./tranche";
 
@@ -12,6 +12,8 @@ const SNOOZE_MS = 2 * 60 * 60 * 1000; // "Plus tard" hides a banner for 2 h
 interface DataCtx {
   dashboard: PollState<Dashboard>;
   settings: PollState<Settings>;
+  /** Status (normal...critical), trends and appliance breakdown, every 30 s. */
+  insights: PollState<Insights>;
   tranche: TrancheView | null;
   snoozed: Set<string>;
   snooze: (alertId: string) => void;
@@ -32,6 +34,7 @@ function readSnoozed(): Record<string, number> {
 export function DataProvider({ children }: { children: ReactNode }) {
   const dashboard = usePoll((s) => api.dashboard(s), DASHBOARD_POLL_MS);
   const settings = usePoll((s) => api.settings(s), 60_000);
+  const insights = usePoll((s) => api.insights(s), 30_000);
   const [snoozedMap, setSnoozedMap] = useState(readSnoozed);
 
   const snooze = useCallback((id: string) => {
@@ -54,8 +57,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const snoozed = useMemo(() => new Set(Object.keys(snoozedMap)), [snoozedMap]);
 
   const value = useMemo(
-    () => ({ dashboard, settings, tranche, snoozed, snooze }),
-    [dashboard, settings, tranche, snoozed, snooze],
+    () => ({ dashboard, settings, insights, tranche, snoozed, snooze }),
+    [dashboard, settings, insights, tranche, snoozed, snooze],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

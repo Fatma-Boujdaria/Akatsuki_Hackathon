@@ -7,6 +7,33 @@ import { Banner, Pill } from "../components/status";
 import { Card, CardHeader, Label, PageHeader, Skeleton, cx } from "../components/ui";
 import type { Badge, DayScore } from "../lib/types";
 import { dateLabel } from "./Home";
+import { L } from "../lib/i18n";
+
+/** Score ring of the design (124 px, Chams arc on the card colour). */
+function ScoreRing({ score }: { score: number }) {
+  const r = 52;
+  const c = 2 * Math.PI * r;
+  const color = score >= 70 ? "var(--success)" : score >= 40 ? "var(--chams)" : "var(--grenade)";
+  return (
+    <div className="relative size-[124px] shrink-0">
+      <svg width="124" height="124" viewBox="0 0 124 124" role="img" aria-label={L(`Score du jour ${score} sur 100`, `Today's score ${score} out of 100`, `سكور اليوم ${score} على 100`)}>
+        <circle cx="62" cy="62" r={r} fill="none" stroke="var(--hairline)" strokeWidth="12" />
+        <circle cx="62" cy="62" r={r} fill="none" stroke={color} strokeWidth="12" strokeLinecap="round" strokeDasharray={`${(score / 100) * c} ${c}`} transform="rotate(-90 62 62)" />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-[34px] leading-9 font-extrabold text-ink tabular-nums">{score}</span>
+        <span className="text-[12px] text-mute">{L("sur 100", "out of 100", "على 100")}</span>
+      </div>
+    </div>
+  );
+}
+
+function scoreWord(score: number): string {
+  if (score >= 85) return L("Très bonne journée", "Great day", "نهار ممتاز");
+  if (score >= 70) return L("Bonne journée", "Good day", "نهار باهي");
+  if (score >= 40) return L("Peut mieux faire", "Could do better", "تنجم تعمل خير");
+  return L("Journée chargée", "Heavy day", "نهار ثقيل");
+}
 
 // Badges reuse the icons inside a soft circle (board 05/06): earned in colour,
 // locked as a dashed circle with a lock.
@@ -53,7 +80,7 @@ function DayRow({ day, isToday }: { day: DayScore; isToday: boolean }) {
       <div>
         <div className="relative h-2.5 rounded-full bg-sunken">
           <div
-            className={cx("absolute inset-y-0 left-0 rounded-full border", over ? "border-harissa bg-harissa" : "border-elec-stroke bg-elec")}
+            className={cx("absolute inset-y-0 start-0 rounded-full border", over ? "border-harissa bg-harissa" : "border-elec-stroke bg-elec")}
             style={{ width: `${Math.min(100, (day.kwh / max) * 100)}%` }}
           />
           {budget != null && (
@@ -64,12 +91,12 @@ function DayRow({ day, isToday }: { day: DayScore; isToday: boolean }) {
             />
           )}
         </div>
-        <p className="mt-1 font-mono text-[12px] text-mute tabular-nums">
-          {kwhValue(day.kwh)} kWh{budget != null ? ` / budget ${kwhValue(budget)}` : ""}
-          {isToday ? " · en cours" : ""}
+        <p className="mt-1 text-[12px] text-mute tabular-nums">
+          {kwhValue(day.kwh)} kWh{budget != null ? ` / ${L("budget", "budget", "الميزانية")} ${kwhValue(budget)}` : ""}
+          {isToday ? ` · ${L("en cours", "in progress", "جاري")}` : ""}
         </p>
       </div>
-      <span className={cx("text-right font-display text-[20px] font-semibold tabular-nums", over ? "text-harissa" : "text-ink")}>{day.score}</span>
+      <span className={cx("text-end font-display text-[20px] font-extrabold tabular-nums", over ? "text-harissa" : "text-ink")}>{day.score}</span>
     </li>
   );
 }
@@ -83,10 +110,10 @@ export function ChallengesPage() {
 
   return (
     <>
-      <PageHeader label={dateLabel(new Date(nowMs))} title="Défis" />
+      <PageHeader label={dateLabel(new Date(nowMs))} title={L("Défis", "Challenges", "التحديات")} />
       {!sc ? (
         score.error ? (
-          <Banner tone="broken" title="Impossible de charger les défis">{score.error}</Banner>
+          <Banner tone="broken" title={L("Impossible de charger les défis", "Could not load the challenges", "ما نجّمناش نحمّلو التحديات")}>{score.error}</Banner>
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
             <Skeleton className="h-64 lg:col-span-5" />
@@ -96,29 +123,39 @@ export function ChallengesPage() {
       ) : (
         <div className="grid grid-cols-1 items-start gap-4 sm:gap-5 lg:grid-cols-12">
           <Card className="lg:col-span-5">
-            <Label as="h2" className="mb-5">Score du jour</Label>
             {today ? (
               <>
-                <p className="t-hero text-ink">
-                  {today.score}
-                  <span className="ml-1 font-display text-[24px] tracking-normal text-mute">/100</span>
-                </p>
-                <p className="t-body mt-2 text-body">
-                  {today.budget_kwh != null
-                    ? `${kwh(today.kwh)} aujourd'hui pour un budget de ${kwh(today.budget_kwh)} par jour.`
-                    : `${kwh(today.kwh)} aujourd'hui.`}
-                </p>
-                <p className="t-small mt-3 text-mute">
-                  Le budget du jour est ce qui garde le mois sous la tranche suivante. Le score ne descend jamais sous 20.
+                <div className="flex items-center gap-4">
+                  <ScoreRing score={today.score} />
+                  <div>
+                    <p className="text-[13px] text-mute">{L("Score du jour", "Today's score", "سكور اليوم")}</p>
+                    <p className="text-[18px] font-extrabold text-ink">{scoreWord(today.score)}</p>
+                    <p className="mt-1 text-[13px] text-body">
+                      {today.budget_kwh != null
+                        ? L(
+                            `${kwh(today.kwh)} aujourd'hui, budget ${kwh(today.budget_kwh)} par jour.`,
+                            `${kwh(today.kwh)} today, budget ${kwh(today.budget_kwh)} a day.`,
+                            `${kwh(today.kwh)} اليوم، الميزانية ${kwh(today.budget_kwh)} في النهار.`,
+                          )
+                        : L(`${kwh(today.kwh)} aujourd'hui.`, `${kwh(today.kwh)} today.`, `${kwh(today.kwh)} اليوم.`)}
+                    </p>
+                  </div>
+                </div>
+                <p className="t-small mt-4 text-mute">
+                  {L(
+                    "Le budget du jour est ce qui garde le mois sous la tranche suivante. Le score ne descend jamais sous 20.",
+                    "The daily budget keeps the month under the next tranche. The score never drops below 20.",
+                    "ميزانية النهار هي اللي تخلّي الشهر تحت الشريحة الجاية. السكور عمرو ما ينزل تحت 20.",
+                  )}
                 </p>
               </>
             ) : (
-              <p className="t-small text-mute">Le score arrive après la première mesure.</p>
+              <p className="t-small text-mute">{L("Le score arrive après la première mesure.", "The score arrives after the first reading.", "السكور يجي بعد أول قياس.")}</p>
             )}
           </Card>
 
           <Card className="lg:col-span-7">
-            <CardHeader title="7 derniers jours" aside={<Label as="span">kWh · score</Label>} />
+            <CardHeader title={L("7 derniers jours", "Last 7 days", "آخر 7 أيام")} aside="kWh · score" />
             <ul className="divide-y divide-hairline">
               {sc.history.map((d) => (
                 <DayRow key={d.day} day={d} isToday={d.day === today?.day} />
@@ -131,11 +168,11 @@ export function ChallengesPage() {
               <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                 <h2 className="t-h2 text-ink">{ch.title}</h2>
                 {ch.status === "reussi" ? (
-                  <Pill tone="live">Réussi pour l'instant</Pill>
+                  <Pill tone="live">{L("Réussi pour l'instant", "On track so far", "ماشي مليح لتوّا")}</Pill>
                 ) : ch.status === "pas_assez_de_donnees" ? (
-                  <Pill tone="neutral">Pas encore assez de mesures</Pill>
+                  <Pill tone="neutral">{L("Pas encore assez de mesures", "Not enough readings yet", "مازال ما فماش قياسات كافية")}</Pill>
                 ) : (
-                  <Pill tone="neutral">En cours</Pill>
+                  <Pill tone="neutral">{L("En cours", "In progress", "جاري")}</Pill>
                 )}
               </div>
               <p className="t-body text-body">{ch.description}</p>
@@ -146,14 +183,14 @@ export function ChallengesPage() {
                     return (
                       <div
                         role="meter"
-                        aria-label={`${kwhValue(ch.current_kwh)} kWh cette semaine, objectif ${kwhValue(ch.target_kwh)} kWh`}
+                        aria-label={L(`${kwhValue(ch.current_kwh)} kWh cette semaine, objectif ${kwhValue(ch.target_kwh)} kWh`, `${kwhValue(ch.current_kwh)} kWh this week, target ${kwhValue(ch.target_kwh)} kWh`, `${kwhValue(ch.current_kwh)} kWh هالجمعة، الهدف ${kwhValue(ch.target_kwh)} kWh`)}
                         aria-valuemin={0}
                         aria-valuemax={Math.round(max)}
                         aria-valuenow={Math.round(ch.current_kwh)}
                         className="relative h-3.5 rounded-full bg-sunken"
                       >
                         <div
-                          className="absolute inset-y-0 left-0 rounded-full border border-elec-stroke bg-elec"
+                          className="absolute inset-y-0 start-0 rounded-full border border-elec-stroke bg-elec"
                           style={{ width: `${Math.min(100, (ch.current_kwh / max) * 100)}%` }}
                         />
                         <div
@@ -164,9 +201,9 @@ export function ChallengesPage() {
                       </div>
                     );
                   })()}
-                  <div className="mt-2 flex justify-between font-mono text-[13px] text-mute tabular-nums">
-                    <span>{kwh(ch.current_kwh)} cette semaine</span>
-                    <span>objectif &lt; {kwh(ch.target_kwh)}</span>
+                  <div className="mt-2 flex justify-between text-[13px] text-mute tabular-nums">
+                    <span>{kwh(ch.current_kwh)} {L("cette semaine", "this week", "هالجمعة")}</span>
+                    <span>{L("objectif", "target", "الهدف")} &lt; {kwh(ch.target_kwh)}</span>
                   </div>
                 </div>
               )}
@@ -179,12 +216,12 @@ export function ChallengesPage() {
                 <Users size={20} strokeWidth={1.5} />
               </span>
               <div>
-                <Label>Classement · foyers similaires</Label>
-                <p className="t-h1 mt-1 text-ink">mieux que {num(sc.ranking.better_than_pct)} %</p>
+                <Label>{L("Classement · foyers similaires", "Ranking · similar homes", "الترتيب · ديار شبيهة")}</Label>
+                <p className="t-h1 mt-1 text-ink">{L("mieux que", "better than", "خير من")} {num(sc.ranking.better_than_pct)} %</p>
                 <p className="t-small mt-1 text-body">{sc.ranking.label}</p>
                 {sc.ranking.is_mock && (
-                  <p className="mt-2 font-mono text-[11px] tracking-[0.06em] text-mute uppercase">
-                    simulation · {sc.ranking.similar_homes} foyers fictifs
+                  <p className="mt-2 text-[11px] font-semibold text-mute">
+                    {L("simulation", "simulation", "محاكاة")} · {sc.ranking.similar_homes} {L("foyers fictifs, classement anonyme", "fictional homes, anonymous ranking", "ديار وهمية، ترتيب بلا أسامي")}
                   </p>
                 )}
               </div>
@@ -193,10 +230,10 @@ export function ChallengesPage() {
 
           <Card className="lg:col-span-12">
             <CardHeader
-              title="Badges"
+              title={L("Badges", "Badges", "الشارات")}
               aside={
                 <Label as="span">
-                  {sc.badges.filter((b) => b.earned).length} / {sc.badges.length} obtenus
+                  {sc.badges.filter((b) => b.earned).length} / {sc.badges.length} {L("obtenus", "earned", "ربحتهم")}
                 </Label>
               }
             />

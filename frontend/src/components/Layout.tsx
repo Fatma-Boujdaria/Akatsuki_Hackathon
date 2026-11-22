@@ -1,35 +1,66 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Award, Bell, Cpu, Droplet, House, LogOut, SlidersVertical, Zap } from "lucide-react";
-import type { ReactNode } from "react";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import {
+  Bell,
+  Cpu,
+  Droplet,
+  History,
+  House,
+  LifeBuoy,
+  LogOut,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
+  Trophy,
+  UserRound,
+  Warehouse,
+  Zap,
+} from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 import { useData } from "../lib/data";
-import { useAuth } from "../lib/auth";
+import { initial, useAuth } from "../lib/auth";
 import { useVirtualEsp } from "../lib/virtualEsp";
+import { L } from "../lib/i18n";
+import { registerServiceWorker, useAlertNotifications } from "../lib/notify";
 import { Logo, type LogoState } from "./Logo";
 import { DevicePill, Pill } from "./status";
+import { HouseholdSwitcher } from "./HouseholdSwitcher";
+import { LanguageSwitch } from "./LanguageSwitch";
 import { cx } from "./ui";
-import { useEffect } from "react";
 
-const NAV: { to: string; label: string; icon: ReactNode; end?: boolean }[] = [
-  { to: "/", label: "Accueil", icon: <House size={22} strokeWidth={1.5} />, end: true },
-  { to: "/electricite", label: "Électricité", icon: <Zap size={22} strokeWidth={1.5} /> },
-  { to: "/eau", label: "Eau", icon: <Droplet size={22} strokeWidth={1.5} /> },
-  { to: "/alertes", label: "Alertes", icon: <Bell size={22} strokeWidth={1.5} /> },
-  { to: "/defis", label: "Défis", icon: <Award size={22} strokeWidth={1.5} /> },
-];
+interface NavItem {
+  to: string;
+  label: string;
+  icon: ReactNode;
+  end?: boolean;
+}
 
-function CountBadge({ n, className }: { n: number; className?: string }) {
-  if (n <= 0) return null;
-  return (
-    <span
-      className={cx(
-        "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-harissa px-1 text-[11px] leading-none font-semibold text-white dark:text-[#0D171F]",
-        className,
-      )}
-      aria-label={`${n} alerte${n > 1 ? "s" : ""} active${n > 1 ? "s" : ""}`}
-    >
-      {n}
-    </span>
-  );
+const icon = (C: typeof House) => <C size={22} strokeWidth={1.8} aria-hidden />;
+
+function sideNav(isAdmin: boolean): NavItem[] {
+  const items: NavItem[] = [
+    { to: "/", label: L("Tableau de bord", "Dashboard", "لوحة القيادة"), icon: icon(House), end: true },
+    { to: "/electricite", label: L("Électricité", "Electricity", "الضو"), icon: icon(Zap) },
+    { to: "/eau", label: L("Eau", "Water", "الماء"), icon: icon(Droplet) },
+    { to: "/assistant", label: L("Assistant IA", "AI assistant", "المساعد الذكي"), icon: icon(Sparkles) },
+    { to: "/alertes", label: L("Alertes", "Alerts", "التنبيهات"), icon: icon(Bell) },
+    { to: "/historique", label: L("Historique", "History", "التاريخ"), icon: icon(History) },
+    { to: "/defis", label: L("Défis", "Challenges", "التحديات"), icon: icon(Trophy) },
+    { to: "/foyers", label: L("Mes foyers", "My homes", "دياري"), icon: icon(Warehouse) },
+    { to: "/reglages", label: L("Paramètres", "Settings", "الإعدادات"), icon: icon(SlidersHorizontal) },
+    { to: "/aide", label: L("Aide et support", "Help & support", "المساعدة"), icon: icon(LifeBuoy) },
+  ];
+  if (isAdmin) items.push({ to: "/admin", label: L("Administration", "Admin", "الإدارة"), icon: icon(ShieldCheck) });
+  return items;
+}
+
+function bottomNav(): NavItem[] {
+  return [
+    { to: "/", label: L("Accueil", "Home", "الرئيسية"), icon: icon(House), end: true },
+    { to: "/electricite", label: L("Électricité", "Electricity", "الضو"), icon: icon(Zap) },
+    { to: "/eau", label: L("Eau", "Water", "الماء"), icon: icon(Droplet) },
+    { to: "/defis", label: L("Défis", "Challenges", "التحديات"), icon: icon(Trophy) },
+    { to: "/profil", label: L("Profil", "Profile", "حسابي"), icon: icon(UserRound) },
+  ];
 }
 
 function useLogoState(): LogoState {
@@ -40,20 +71,29 @@ function useLogoState(): LogoState {
   return "default";
 }
 
-function SettingsButton() {
+/** Round bell (dot when an alert is open) and avatar of the design's header. */
+export function HeaderActions() {
+  const { dashboard } = useData();
+  const { user } = useAuth();
+  const count = dashboard.data?.active_alerts.length ?? 0;
   return (
-    <NavLink
-      to="/reglages"
-      aria-label="Réglages"
-      className={({ isActive }) =>
-        cx(
-          "inline-flex size-11 items-center justify-center rounded-ctl text-ink transition-colors hover:bg-sunken",
-          isActive && "bg-primary-soft text-primary",
-        )
-      }
-    >
-      <SlidersVertical size={22} strokeWidth={1.5} />
-    </NavLink>
+    <div className="flex shrink-0 items-center gap-2.5">
+      <Link
+        to="/alertes"
+        aria-label={count ? L(`Alertes, ${count} non lues`, `Alerts, ${count} unread`, `التنبيهات، ${count} جديدة`) : L("Alertes", "Alerts", "التنبيهات")}
+        className="relative inline-flex size-11 items-center justify-center rounded-full bg-surface text-ink hover:bg-sunken"
+      >
+        <Bell size={20} strokeWidth={1.8} aria-hidden />
+        {count > 0 && <span aria-hidden className="absolute end-[11px] top-[10px] size-2 rounded-full bg-chams" />}
+      </Link>
+      <Link
+        to="/profil"
+        aria-label={L("Profil", "Profile", "حسابي")}
+        className="inline-flex size-11 items-center justify-center rounded-full bg-bahr text-[15px] font-bold text-white no-underline"
+      >
+        {initial(user)}
+      </Link>
+    </div>
   );
 }
 
@@ -64,152 +104,161 @@ export function Layout() {
   const logoState = useLogoState();
   const alertCount = dashboard.data?.active_alerts.length ?? 0;
   const { pathname } = useLocation();
+  const isHome = pathname === "/";
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [pathname]);
 
+  // Phone / browser notifications for new alerts (when the user enabled them).
+  useAlertNotifications(dashboard.data?.active_alerts, user?.notify_prefs);
+  useEffect(() => {
+    if (user?.notify_prefs?.push) void registerServiceWorker();
+  }, [user?.notify_prefs?.push]);
+
   return (
     <div className="min-h-dvh bg-canvas">
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-ctl focus:bg-surface focus:px-4 focus:py-2"
+        className="sr-only focus:not-sr-only focus:fixed focus:start-2 focus:top-2 focus:z-50 focus:rounded-ctl focus:bg-surface focus:px-4 focus:py-2"
       >
-        Aller au contenu
+        {L("Aller au contenu", "Skip to content", "روح للمحتوى")}
       </a>
 
-      {/* Desktop: 240 px left sidebar, active item on a Bahr-soft pill */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-hairline bg-surface lg:flex">
-        <div className="flex h-[72px] items-center px-5">
-          <NavLink to="/" aria-label="Tranche Guard, accueil">
-            <Logo size={30} state={logoState} />
+      {/* Desktop: sidebar with every section */}
+      <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col bg-surface lg:flex">
+        <div className="flex h-[76px] items-center px-5">
+          <NavLink to="/" aria-label={L("Tranche Guard, accueil", "Tranche Guard, home", "Tranche Guard، الرئيسية")}>
+            <Logo size={34} state={logoState} />
           </NavLink>
         </div>
-        <nav aria-label="Navigation principale" className="flex-1 px-3 pt-2">
-          <ul className="space-y-1">
-            {NAV.map((item) => (
+        <nav aria-label={L("Navigation principale", "Main navigation", "القائمة الرئيسية")} className="flex-1 overflow-y-auto px-3">
+          <ul className="space-y-0.5">
+            {sideNav(user?.role === "admin").map((item) => (
               <li key={item.to}>
                 <NavLink
                   to={item.to}
                   end={item.end}
                   className={({ isActive }) =>
                     cx(
-                      "flex min-h-11 items-center gap-3 rounded-ctl px-3 text-[15px] font-medium transition-colors",
-                      isActive ? "bg-primary-soft text-ink [&_svg]:text-primary" : "text-body hover:bg-sunken hover:text-ink",
+                      "flex min-h-11 items-center gap-3 rounded-ctl px-3 text-[14px] no-underline transition-colors",
+                      isActive ? "bg-sunken font-bold text-ink [&_svg]:text-nav-active" : "font-semibold text-body hover:bg-sunken",
                     )
                   }
                 >
                   {item.icon}
                   <span className="flex-1">{item.label}</span>
-                  {item.to === "/alertes" && <CountBadge n={alertCount} />}
+                  {item.to === "/alertes" && alertCount > 0 && (
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-chams px-1.5 text-[11px] font-bold text-[#0D1820]">
+                      {alertCount}
+                    </span>
+                  )}
                 </NavLink>
               </li>
             ))}
+            <li className="pt-2">
+              <NavLink
+                to="/esp"
+                className={({ isActive }) =>
+                  cx(
+                    "flex min-h-11 items-center gap-3 rounded-ctl px-3 text-[13px] font-semibold no-underline",
+                    isActive ? "bg-sunken text-ink" : "text-mute hover:bg-sunken",
+                  )
+                }
+              >
+                <Cpu size={20} strokeWidth={1.8} aria-hidden />
+                <span className="flex-1">{L("Contrôle démo", "Demo control", "التحكم في الديمو")}</span>
+                {esp.running && <span aria-label={L("en marche", "running", "يخدم")} className="tg-live-dot size-2 rounded-full bg-success" />}
+              </NavLink>
+            </li>
           </ul>
         </nav>
-        <div className="px-3 pb-3">
-          <NavLink
-            to="/esp"
-            className={({ isActive }) =>
-              cx(
-                "flex min-h-11 items-center gap-3 rounded-ctl px-3 text-[14px] font-medium transition-colors",
-                isActive ? "bg-primary-soft text-ink [&_svg]:text-primary" : "text-mute hover:bg-sunken hover:text-ink",
-              )
-            }
-          >
-            <Cpu size={20} strokeWidth={1.5} />
-            <span className="flex-1">Contrôle ESP</span>
-            {esp.running && <span aria-label="en marche" className="tg-live-dot size-2 rounded-full bg-primary" />}
-          </NavLink>
-        </div>
-        <div className="border-t border-hairline p-4">
-          <p className="truncate text-[14px] font-semibold text-ink">{dashboard.data?.household_name ?? "Mon foyer"}</p>
-          <p className="truncate font-mono text-[12px] text-mute">
-            {dashboard.data?.device ? `${dashboard.data.device.id} · ${dashboard.data.subscribed_kva} kVA` : "aucun appareil"}
-          </p>
+        <div className="space-y-3 border-t border-hairline p-4">
+          <LanguageSwitch />
+          <div className="flex items-center gap-3">
+            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-bahr text-[14px] font-bold text-white">
+              {initial(user)}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-bold text-ink">{user?.full_name || user?.email}</p>
+              <p className="truncate text-[12px] text-mute">{user?.email}</p>
+            </div>
+            <button
+              type="button"
+              onClick={logout}
+              aria-label={L("Se déconnecter", "Log out", "اخرج")}
+              title={L("Se déconnecter", "Log out", "اخرج")}
+              className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full text-mute hover:bg-sunken hover:text-ink"
+            >
+              <LogOut size={18} strokeWidth={1.8} className="rtl:rotate-180" />
+            </button>
+          </div>
         </div>
       </aside>
 
-      <div className="lg:pl-60">
-        {/* Top bar: logo on mobile, status and settings everywhere */}
-        <header className="sticky top-0 z-20 border-b border-hairline bg-canvas/95 backdrop-blur supports-[backdrop-filter]:bg-canvas/85">
-          <div className="mx-auto flex h-16 max-w-[1180px] items-center justify-between gap-3 px-4 sm:px-6 lg:h-[72px] lg:px-8">
-            <NavLink to="/" className="lg:hidden" aria-label="Tranche Guard, accueil">
-              <Logo size={30} state={logoState} />
-            </NavLink>
-            <div className="hidden items-center gap-3 lg:flex">
-              {dashboard.data ? (
-                <DevicePill live={dashboard.data.live} device={dashboard.data.device} />
-              ) : null}
+      <div className="lg:ps-64">
+        {/* Desktop top bar: home switcher, device status, bell, avatar */}
+        <header className="sticky top-0 z-20 hidden bg-canvas/90 backdrop-blur lg:block">
+          <div className="mx-auto flex h-[76px] max-w-[1180px] items-center justify-between gap-4 px-8">
+            <HouseholdSwitcher />
+            <div className="flex items-center gap-3">
+              {dashboard.data && <DevicePill live={dashboard.data.live} device={dashboard.data.device} />}
               {dashboard.error && dashboard.data && (
-                <Pill tone="broken">Connexion au serveur perdue</Pill>
+                <Pill tone="broken">{L("Connexion au serveur perdue", "Server connection lost", "الاتصال بالسرفور مقطوع")}</Pill>
               )}
-            </div>
-            <div className="flex items-center gap-1">
               {esp.running && (
-                <NavLink to="/esp" className="mr-1" aria-label="Boîtier virtuel en marche">
+                <NavLink to="/esp" aria-label={L("Boîtier virtuel en marche", "Virtual box running", "البواطة الافتراضية تخدم")}>
                   <Pill tone="live" icon={<Cpu size={14} strokeWidth={1.75} />}>
-                    <span className="hidden sm:inline">Boîtier virtuel</span>
-                    <span className="sm:hidden">ESP</span>
+                    {L("Boîtier virtuel", "Virtual box", "بواطة افتراضية")}
                   </Pill>
                 </NavLink>
               )}
-              {user && (
-                <span className="mr-2 hidden max-w-[220px] truncate text-[14px] text-mute xl:inline">{user.email}</span>
-              )}
-              <SettingsButton />
-              <button
-                type="button"
-                onClick={logout}
-                aria-label="Se déconnecter"
-                title="Se déconnecter"
-                className="hidden size-11 cursor-pointer items-center justify-center rounded-ctl text-mute transition-colors hover:bg-sunken hover:text-ink lg:inline-flex"
-              >
-                <LogOut size={20} strokeWidth={1.5} />
-              </button>
+              <HeaderActions />
             </div>
           </div>
         </header>
 
+        {/* Phone: the design's header on the home screen only */}
+        {isHome && (
+          <header className="flex h-16 items-center justify-between gap-3 px-4 pt-2 lg:hidden">
+            <HouseholdSwitcher />
+            <HeaderActions />
+          </header>
+        )}
+
         {dashboard.error && dashboard.data && (
-          <div className="mx-auto max-w-[1180px] px-4 pt-3 sm:px-6 lg:hidden">
-            <Pill tone="broken">Connexion au serveur perdue · données de {new Date(dashboard.updatedAt ?? 0).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</Pill>
+          <div className="px-4 pt-2 lg:hidden">
+            <Pill tone="broken">{L("Connexion au serveur perdue", "Server connection lost", "الاتصال بالسرفور مقطوع")}</Pill>
           </div>
         )}
 
-        <main id="main" className="mx-auto max-w-[1180px] px-4 pt-5 pb-28 sm:px-6 sm:pt-7 lg:px-8 lg:pb-12">
+        <main id="main" className={cx("mx-auto max-w-[1180px] px-4 pb-32 sm:px-6 lg:px-8 lg:pb-12", isHome ? "pt-3" : "pt-4 lg:pt-2")}>
           <Outlet />
         </main>
       </div>
 
-      {/* Mobile: bottom nav, one-handed */}
+      {/* Phone: floating pill navigation */}
       <nav
-        aria-label="Navigation principale"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-hairline bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
+        aria-label={L("Navigation principale", "Main navigation", "القائمة الرئيسية")}
+        className="fixed inset-x-3 bottom-[calc(14px+env(safe-area-inset-bottom))] z-30 rounded-[34px] bg-surface shadow-[0_10px_30px_rgba(13,24,32,0.25)] lg:hidden"
       >
-        <ul className="mx-auto grid max-w-xl grid-cols-5 px-1 pt-2 pb-1.5">
-          {NAV.map((item) => (
+        <ul className="grid h-[68px] grid-cols-5 items-center">
+          {bottomNav().map((item) => (
             <li key={item.to}>
               <NavLink
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  cx("group flex min-h-14 flex-col items-center gap-1 text-[12px] leading-4", isActive ? "font-semibold text-ink" : "text-mute")
+                  cx(
+                    "relative flex min-h-11 flex-col items-center justify-center gap-[3px] text-[11px] no-underline",
+                    isActive ? "font-bold text-nav-active" : "font-semibold text-mute",
+                  )
                 }
               >
-                {({ isActive }) => (
-                  <>
-                    <span
-                      className={cx(
-                        "relative inline-flex h-8 w-14 items-center justify-center rounded-full transition-colors",
-                        isActive ? "bg-primary-soft text-primary" : "text-body group-hover:bg-sunken",
-                      )}
-                    >
-                      {item.icon}
-                      {item.to === "/alertes" && <CountBadge n={alertCount} className="absolute -top-1 right-2" />}
-                    </span>
-                    {item.label}
-                  </>
+                {item.icon}
+                {item.label}
+                {item.to === "/profil" && alertCount > 0 && (
+                  <span aria-hidden className="absolute end-[calc(50%-16px)] top-0 size-2 rounded-full bg-chams" />
                 )}
               </NavLink>
             </li>

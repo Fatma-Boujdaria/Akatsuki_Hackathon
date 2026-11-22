@@ -47,13 +47,15 @@ def burn_password_check(password: str) -> None:
     verify_password(password, _DUMMY_HASH)
 
 
-def create_access_token(user_id: uuid.UUID, role: str) -> tuple[str, int]:
+def create_access_token(user_id: uuid.UUID, role: str, version: int = 0, remember: bool = False) -> tuple[str, int]:
+    """Session token. `version` must match users.token_version (password change logs out)."""
     settings = get_settings()
-    expires_in = settings.jwt_expire_minutes * 60
+    expires_in = settings.jwt_remember_days * 86400 if remember else settings.jwt_expire_minutes * 60
     now = clock.now_utc()
     payload = {
         "sub": str(user_id),
         "role": role,
+        "ver": version,
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(seconds=expires_in)).timestamp()),
     }
@@ -73,6 +75,17 @@ def decode_access_token(token: str) -> dict:
     if payload["exp"] < clock.now_utc().timestamp():
         raise jwt.ExpiredSignatureError("token expired")
     return payload
+
+
+def generate_code() -> str:
+    """6-digit one-time code for email verification and password reset."""
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def hash_code(user_id: uuid.UUID, code: str) -> str:
+    # Salted with the user id and the JWT secret: a leaked table does not give the codes.
+    secret = get_settings().jwt_secret.encode("utf-8")
+    return hmac.new(secret, f"{user_id}:{code}".encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def generate_api_key() -> str:

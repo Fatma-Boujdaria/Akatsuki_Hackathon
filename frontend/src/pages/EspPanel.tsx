@@ -8,6 +8,7 @@ import { flow as fmtFlow, kwh, kwhValue, num, time, watts } from "../lib/format"
 import { Button, Card, CardHeader, IconTile, Label, PageHeader, Segmented, cx } from "../components/ui";
 import { Banner, LiveDot, Pill } from "../components/status";
 import { Field } from "../components/Field";
+import { L } from "../lib/i18n";
 import { TrancheBar } from "../components/TrancheBar";
 
 // "Contrôle ESP": a virtual box for the demo and for testing every screen state.
@@ -148,11 +149,11 @@ function ConnectionCard() {
           <div className="flex flex-wrap gap-3">
             {esp.running ? (
               <Button variant="secondary" onClick={esp.stop}>
-                <Pause size={18} strokeWidth={1.75} aria-hidden /> Arrêter
+                <Pause size={18} strokeWidth={1.75} aria-hidden /> {L("Arrêter", "Stop", "وقّف")}
               </Button>
             ) : (
               <Button onClick={esp.start} disabled={!esp.deviceKey}>
-                <Play size={18} strokeWidth={1.75} aria-hidden /> Démarrer
+                <Play size={18} strokeWidth={1.75} aria-hidden /> {L("Démarrer", "Start", "ابدا")}
               </Button>
             )}
             <Button variant="secondary" onClick={esp.sendNow} disabled={!esp.deviceKey}>
@@ -180,16 +181,17 @@ export function EspPanelPage() {
   return (
     <>
       <PageHeader
-        label="Démo · boîtier virtuel"
-        title="Contrôle ESP"
+        back="/profil"
+        label={L("Démo · boîtier virtuel", "Demo · virtual box", "ديمو · بواطة افتراضية")}
+        title={L("Contrôle démo", "Demo control", "التحكم في الديمو")}
         aside={
           esp.running ? (
             <Button variant="secondary" onClick={esp.stop}>
-              <Pause size={18} strokeWidth={1.75} aria-hidden /> Arrêter
+              <Pause size={18} strokeWidth={1.75} aria-hidden /> {L("Arrêter", "Stop", "وقّف")}
             </Button>
           ) : (
             <Button onClick={esp.start} disabled={!esp.deviceKey}>
-              <Play size={18} strokeWidth={1.75} aria-hidden /> Démarrer
+              <Play size={18} strokeWidth={1.75} aria-hidden /> {L("Démarrer", "Start", "ابدا")}
             </Button>
           )
         }

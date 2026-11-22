@@ -2,10 +2,26 @@
 
 export type Resource = "electricity" | "water";
 
+export type Lang = "fr" | "en" | "ar";
+
+export interface NotifyPrefs {
+  threshold: boolean;
+  leak: boolean;
+  device: boolean;
+  tips: boolean;
+  push: boolean;
+}
+
 export interface User {
   id: string;
   email: string;
   role: "household" | "admin" | string;
+  full_name?: string | null;
+  language?: Lang | string;
+  status?: "active" | "suspended" | string;
+  email_verified?: boolean;
+  notify_prefs?: NotifyPrefs | null;
+  created_at?: string | null;
 }
 
 export interface TokenOut {
@@ -112,6 +128,12 @@ export interface Alert {
   is_estimate: boolean;
   created_at: string;
   acknowledged_at: string | null;
+  params?: Record<string, unknown> | null;
+  household_id?: string | null;
+}
+
+export interface Notification extends Alert {
+  household_name: string;
 }
 
 export interface HeavyConsumer {
@@ -124,6 +146,7 @@ export interface HeavyConsumer {
 export interface Dashboard {
   generated_at: string;
   state: "empty" | "ok";
+  household_id?: string | null;
   household_name: string;
   subscribed_kva: number;
   device: DeviceStatus | null;
@@ -162,6 +185,7 @@ export interface Tip {
   source: "rule" | "llm" | string;
   is_estimate: boolean;
   created_at: string;
+  params?: Record<string, unknown> | null;
 }
 
 export interface DayScore {
@@ -214,6 +238,9 @@ export interface Settings {
   active_device_id: string | null;
   devices: DeviceStatus[];
   demo_mode: boolean;
+  address?: string | null;
+  occupants?: number | null;
+  onboarding_done?: boolean;
 }
 
 export type SettingsIn = Partial<
@@ -291,4 +318,205 @@ export interface IngestOut {
   ts: string;
   alerts_created: number;
   commands: DemoCommand[];
+}
+
+// ---- Phase 2: accounts, households, appliances, assistant, history, support, admin ----
+
+export interface CodeSent {
+  status: "sent";
+  email: string;
+  expires_in_min: number;
+  /** Demo without SMTP: the code is shown on screen. */
+  dev_code: string | null;
+}
+
+export interface Household {
+  id: string;
+  name: string;
+  address: string | null;
+  occupants: number | null;
+  subscribed_kva: number;
+  alert_margin_kwh: number;
+  onboarding_done: boolean;
+  created_at: string;
+  devices: DeviceStatus[];
+  appliance_count: number;
+  unread_alerts: number;
+}
+
+export interface HouseholdIn {
+  name: string;
+  address?: string | null;
+  occupants?: number | null;
+  subscribed_kva: number;
+  alert_margin_kwh: number;
+}
+
+export interface DeviceCreated {
+  device: DeviceStatus;
+  api_key: string;
+}
+
+export interface ApplianceIn {
+  category: string;
+  name: string;
+  quantity: number;
+  power_w: number | null;
+  hours_per_day: number | null;
+  start_hour?: number | null;
+  end_hour?: number | null;
+}
+
+export interface Appliance extends ApplianceIn {
+  id: string;
+  effective_power_w: number;
+  effective_hours_per_day: number;
+  estimated_kwh_month: number;
+}
+
+export interface ApplianceCatalogItem {
+  category: string;
+  typical_power_w: number;
+  typical_hours_per_day: number;
+  icon: string;
+}
+
+export interface ApplianceShare {
+  id: string | null;
+  category: string;
+  name: string;
+  kwh_month: number;
+  share_pct: number;
+  cost_dt: number | null;
+}
+
+export type ConsumptionStatus = "normal" | "attention" | "warning" | "critical" | "unavailable";
+
+export interface Insights {
+  generated_at: string;
+  profile_kwh_month: number | null;
+  measured_month_kwh: number;
+  forecast_kwh: number | null;
+  forecast_bill_dt: number | null;
+  breakdown: ApplianceShare[];
+  last7_kwh_per_day: number | null;
+  previous_kwh_per_day: number | null;
+  trend_pct: number | null;
+  unusual_increase: boolean;
+  water_last7_l_per_day: number | null;
+  water_previous_l_per_day: number | null;
+  water_trend_pct: number | null;
+  water_forecast_l: number | null;
+  status: ConsumptionStatus;
+  status_reasons: string[];
+}
+
+export interface ChatTurn {
+  role: "user" | "assistant";
+  text: string;
+}
+
+export interface ChatFact {
+  label: string;
+  value: string;
+  kind: "measured" | "forecast" | "assumption" | "profile";
+}
+
+export interface ChatOut {
+  intent: string;
+  answer: string;
+  facts: ChatFact[];
+  suggestions: string[];
+  source: "rule" | "llm";
+}
+
+export interface HistoryMonth {
+  month: string;
+  kwh: number;
+  litres: number;
+  bill_dt: number | null;
+  water_bill_dt: number | null;
+  tranche_index: number | null;
+  partial: boolean;
+}
+
+export interface Ticket {
+  id: string;
+  email: string;
+  category: string;
+  subject: string;
+  message: string;
+  status: "open" | "answered" | "closed" | string;
+  created_at: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  status: string;
+  email_verified: boolean;
+  language: string;
+  created_at: string;
+  last_login_at: string | null;
+  households: number;
+}
+
+export interface AdminDevice {
+  id: string;
+  kind: string;
+  household_id: string;
+  household_name: string;
+  owner_email: string;
+  online: boolean;
+  last_seen_at: string | null;
+  last_reading_at: string | null;
+  last_signal_ok: boolean | null;
+  sensor_faults_7d: number;
+}
+
+export interface AdminHousehold {
+  id: string;
+  name: string;
+  owner_email: string;
+  subscribed_kva: number;
+  devices: number;
+  devices_online: number;
+  appliances: number;
+  unread_alerts: number;
+  created_at: string;
+}
+
+export interface AdminSystem {
+  generated_at: string;
+  uptime_s: number;
+  database: string;
+  database_ok: boolean;
+  database_latency_ms: number | null;
+  requests_total: number;
+  errors_5xx: number;
+  readings_rejected: number;
+  readings_last_hour: number;
+  devices_total: number;
+  devices_online: number;
+  alerts_24h: number;
+  emails_sent: number;
+  emails_failed: number;
+  emails_logged: number;
+  email_mode: "smtp" | "log";
+  llm_configured: boolean;
+  open_tickets: number;
+  users_total: number;
+  households_total: number;
+  recent_errors: string[];
+}
+
+export interface TariffAudit {
+  id: number;
+  admin_email: string;
+  summary: string;
+  before: Tariffs | null;
+  after: Tariffs | null;
+  created_at: string;
 }

@@ -23,7 +23,20 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(min_length=32)  # required: the app refuses to start without it
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 12 * 60  # a demo day without logging in again
+    jwt_remember_days: int = 30  # "Se souvenir de moi" on the login screen
     device_api_key: str | None = None  # key of the demo simulator device (seed script)
+
+    # --- Email (verification codes, password reset) -------------------------
+    # Empty SMTP_HOST: emails are written to the server log instead of being sent,
+    # and in DEMO_MODE the code is also returned to the screen (dev_code).
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "Tranche Guard <no-reply@trancheguard.tn>"
+    smtp_starttls: bool = True
+    email_code_minutes: int = 30  # validity of a verification or reset code
+    email_rate_limit_per_hour: int = 5  # codes sent per email address and hour
 
     # --- Optional LLM (tip wording only, never numbers) ----------------------
     llm_api_key: str | None = None
@@ -47,6 +60,15 @@ class Settings(BaseSettings):
 
     login_rate_limit_per_min: int = 5
     ingest_rate_limit_per_min: int = 60  # the device sends 12/min; leaves room for retries
+
+    @property
+    def email_configured(self) -> bool:
+        return bool(self.smtp_host)
+
+    @property
+    def show_dev_codes(self) -> bool:
+        """Demo without SMTP: the code is shown on screen so sign-up still works."""
+        return self.demo_mode and not self.email_configured
 
     @property
     def cors_origin_list(self) -> list[str]:

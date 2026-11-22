@@ -22,7 +22,7 @@ backend/
 ├── supabase/migrations/   # the same tables in SQL (already applied to Akatsuki_db)
 ├── simulator/             # sends the same JSON as the ESP32
 ├── scripts/seed_demo.py   # demo accounts, devices and a month of history
-└── tests/                 # 66 automatic tests
+└── tests/                 # 88 automatic tests
 ```
 
 ## 1. Install (once)
@@ -137,6 +137,34 @@ Every amount in DT is an estimate (`is_estimate: true`), so show the word *estim
 | GET / PUT | `/api/tariffs` | Tariff grid. PUT = admin only, replaces all rows |
 | POST | `/api/demo/spike` | Jury demo button (202) |
 | GET | `/api/health` | Is the API up? |
+
+**Full application (phase 2).** Household endpoints work on the home sent in the
+`X-Household-Id` header (default: the account's first home).
+
+| Method | Endpoint | What for |
+|---|---|---|
+| POST | `/api/auth/register` | `{full_name, email, password, language}` → 6-digit code by email (unique email, 8+ chars) |
+| POST | `/api/auth/verify-email` · `/resend-code` | Confirm the address → logged in |
+| POST | `/api/auth/forgot-password` · `/reset-password` | Code by email → new password (ends every session) |
+| PATCH | `/api/auth/me` | Name, language (`fr`/`en`/`ar`), notification preferences |
+| POST | `/api/auth/change-password` · `/logout-all` | Password change, log out everywhere |
+| DELETE | `/api/auth/me` | Delete the account and all its homes (password + `SUPPRIMER`) |
+| GET / POST / PUT / DELETE | `/api/households[/{id}]` | Several homes per account |
+| POST | `/api/households/{id}/devices` | Register a box; its key is shown once |
+| GET / POST / PUT / DELETE | `/api/appliances[/{id}]`, `/bulk`, `/catalog` | Appliance profile (an estimate, never a measurement) |
+| GET | `/api/insights` | Status normal / attention / warning / critical / unavailable, 7-day trend, profile breakdown |
+| GET | `/api/history?months=12` | kWh, litres and estimated bill per month |
+| POST | `/api/assistant/chat` | `{message, language, history}` → answer + facts tagged measured / forecast / assumption / profile |
+| GET | `/api/notifications` · POST `/{id}/read` · `/read-all` | Alert history of every home, read / unread |
+| POST / GET | `/api/support/tickets` | Contact support |
+| GET / PATCH | `/api/admin/...` | Admin only: users (suspend), homes, devices, system health, tariff audit log, support |
+
+Without `SMTP_HOST` in `.env`, codes are written to the API log and, with `DEMO_MODE=true`,
+returned as `dev_code` so the sign-up works in the local demo.
+
+**Supabase:** `supabase/migrations/20261122010811_full_app.sql` is already applied to
+Akatsuki_db (new columns have defaults, existing accounts keep working). SQLite creates
+everything at start-up.
 
 Screen states from `/api/dashboard`:
 - `state == "empty"` → "En attente de la première mesure" + link to Demo control.

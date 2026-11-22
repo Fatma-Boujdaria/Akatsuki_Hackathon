@@ -1,11 +1,13 @@
-import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
-import { CircleAlert } from "lucide-react";
+import { useId, useState, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { CircleAlert, Eye, EyeOff } from "lucide-react";
+import { L } from "../lib/i18n";
 import { cx } from "./ui";
 
 // Fields (board 05): label above, help or error below.
 
+// Design: 52 px fields, 14 px corners, hairline border on the card colour.
 const control =
-  "block w-full min-h-11 rounded-ctl border bg-surface px-3.5 text-[16px] text-ink placeholder:text-control " +
+  "block w-full min-h-[52px] rounded-ctl border bg-surface px-4 text-[15px] font-medium text-ink placeholder:text-control " +
   "transition-colors focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-offset-0 disabled:opacity-40";
 
 function FieldShell({
@@ -23,7 +25,7 @@ function FieldShell({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-[15px] leading-6 font-semibold text-ink">
+      <label htmlFor={id} className="mb-2 block text-[14px] leading-5 font-semibold text-body">
         {label}
       </label>
       {children}
@@ -59,14 +61,14 @@ export function Field({
           aria-describedby={help || error ? `${id}-msg` : undefined}
           className={cx(
             control,
-            suffix && "pr-14",
-            error ? "border-grenade focus:ring-grenade/25" : "border-control/60 focus:border-primary focus:ring-primary/25",
+            suffix && "pe-14",
+            error ? "border-grenade focus:ring-grenade/25" : "border-hairline focus:border-link focus:ring-link/25",
             className,
           )}
           {...rest}
         />
         {suffix && (
-          <span className="pointer-events-none absolute inset-y-0 right-3.5 flex items-center font-mono text-[13px] text-mute">
+          <span className="pointer-events-none absolute inset-y-0 end-3.5 flex items-center text-[13px] font-semibold text-mute">
             {suffix}
           </span>
         )}
@@ -92,8 +94,8 @@ export function SelectField({
         aria-describedby={help || error ? `${id}-msg` : undefined}
         className={cx(
           control,
-          "cursor-pointer appearance-none bg-[length:16px] bg-[right_12px_center] bg-no-repeat pr-10",
-          error ? "border-grenade" : "border-control/60 focus:border-primary focus:ring-primary/25",
+          "cursor-pointer appearance-none bg-[length:16px] bg-[right_12px_center] bg-no-repeat pe-10 rtl:bg-[left_12px_center]",
+          error ? "border-grenade" : "border-hairline focus:border-link focus:ring-link/25",
           className,
         )}
         style={{
@@ -105,5 +107,75 @@ export function SelectField({
         {children}
       </select>
     </FieldShell>
+  );
+}
+
+/** Password with a show / hide button. */
+export function PasswordField({
+  label,
+  help,
+  error,
+  className,
+  ...rest
+}: Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & { label: ReactNode; help?: ReactNode; error?: string | null }) {
+  const id = useId();
+  const [shown, setShown] = useState(false);
+  return (
+    <FieldShell id={id} label={label} help={help} error={error}>
+      <div className="relative">
+        <input
+          id={id}
+          type={shown ? "text" : "password"}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={help || error ? `${id}-msg` : undefined}
+          className={cx(
+            control,
+            "pe-14",
+            error ? "border-grenade focus:ring-grenade/25" : "border-hairline focus:border-link focus:ring-link/25",
+            className,
+          )}
+          {...rest}
+        />
+        <button
+          type="button"
+          onClick={() => setShown((v) => !v)}
+          aria-label={shown ? L("Masquer le mot de passe", "Hide password", "خبّي كلمة السر") : L("Afficher le mot de passe", "Show password", "ورّي كلمة السر")}
+          aria-pressed={shown}
+          className="absolute inset-y-0 end-1 my-auto inline-flex size-11 cursor-pointer items-center justify-center rounded-ctl text-mute hover:text-ink"
+        >
+          {shown ? <EyeOff size={18} strokeWidth={1.8} /> : <Eye size={18} strokeWidth={1.8} />}
+        </button>
+      </div>
+    </FieldShell>
+  );
+}
+
+/** Checkbox with its label on the same line (44 px tall). */
+export function CheckboxField({
+  label,
+  checked,
+  onChange,
+  help,
+}: {
+  label: ReactNode;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  help?: ReactNode;
+}) {
+  const id = useId();
+  return (
+    <div>
+      <label htmlFor={id} className="flex min-h-11 cursor-pointer items-center gap-3 text-[14px] font-semibold text-body">
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="size-5 shrink-0 cursor-pointer accent-[var(--primary)]"
+        />
+        {label}
+      </label>
+      {help && <p className="ms-8 text-[13px] text-mute">{help}</p>}
+    </div>
   );
 }

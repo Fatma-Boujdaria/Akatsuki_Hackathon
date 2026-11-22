@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { L } from "../../lib/i18n";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { Series } from "../../lib/types";
 import { useChartColors } from "../../lib/theme";
@@ -24,7 +25,7 @@ export function WaterMonthBars({ series, now }: { series: Series | null; now: Da
 
   if (!series) {
     return (
-      <ChartCard title="Litres par jour" unit="L · ce mois-ci">
+      <ChartCard title={L("Litres par jour", "Litres per day", "لترات في النهار")} unit={L("L · ce mois-ci", "L · this month", "L · هالشهر")}>
         <Skeleton className="h-[220px]" />
       </ChartCard>
     );
@@ -32,7 +33,7 @@ export function WaterMonthBars({ series, now }: { series: Series | null; now: Da
   const avg = data.length ? data.reduce((s, d) => s + d.litres, 0) / data.length : 0;
 
   return (
-    <ChartCard title="Litres par jour" unit="L · ce mois-ci" footer={data.length ? `Moyenne : ${litres(avg)} par jour.` : undefined}>
+    <ChartCard title={L("Litres par jour", "Litres per day", "لترات في النهار")} unit={L("L · ce mois-ci", "L · this month", "L · هالشهر")} footer={data.length ? L(`Moyenne : ${litres(avg)} par jour.`, `Average: ${litres(avg)} a day.`, `المعدّل: ${litres(avg)} في النهار.`) : undefined}>
       <div className="h-[220px]" role="img" aria-label={`Litres par jour ce mois-ci, moyenne ${num(Math.round(avg))} litres.`}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -8 }} barCategoryGap="22%">
@@ -62,7 +63,7 @@ export function WaterMonthBars({ series, now }: { series: Series | null; now: Da
                 const pt = payload[0].payload as (typeof data)[number];
                 return (
                   <TooltipBox
-                    title={`${dayMonth(pt.ts)}${pt.day === today.d ? " · en cours" : ""}`}
+                    title={`${dayMonth(pt.ts)}${pt.day === today.d ? ` · ${L("en cours", "in progress", "جاري")}` : ""}`}
                     rows={[{ value: litres(pt.litres) }]}
                   />
                 );

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { L } from "../../lib/i18n";
 import {
   Area,
   CartesianGrid,
@@ -73,7 +74,7 @@ export function MonthChart({
 
   if (!series || !elec || !view) {
     return (
-      <ChartCard title={`Cumul de ${monthName(now)}`} unit="kWh · estimation">
+      <ChartCard title={`${L("Cumul de", "Running total for", "المجموع متاع")} ${monthName(now)}`} unit={`kWh · ${L("estimation", "estimate", "تقدير")}`}>
         <Skeleton className="h-[260px]" />
       </ChartCard>
     );
@@ -92,8 +93,8 @@ export function MonthChart({
   return (
     <ChartCard
       title={`Cumul de ${monthName(now)}`}
-      unit="kWh · estimation"
-      footer={elec.forecast.available ? elec.forecast.assumption : "Prévision disponible après une heure de mesures."}
+      unit={`kWh · ${L("estimation", "estimate", "تقدير")}`}
+      footer={elec.forecast.available ? elec.forecast.assumption : L("Prévision disponible après une heure de mesures.", "Forecast available after one hour of readings.", "التوقّع يجي بعد ساعة قياسات.")}
     >
       <div className="h-[260px] sm:h-[280px]" role="img" aria-label={`Consommation cumulée : ${kwhValue(elec.month_kwh)} kWh aujourd'hui${fc != null ? `, prévision ${num(Math.round(fc))} kWh en fin de mois` : ""}${view.next != null ? `, tranche suivante à ${num(view.next)} kWh` : ""}.`}>
         <ResponsiveContainer width="100%" height="100%">
@@ -128,10 +129,10 @@ export function MonthChart({
                 const date = new Date(Date.UTC(p.y, p.mo - 1, Math.floor(pt.x), 12));
                 return (
                   <TooltipBox
-                    title={pt.x >= end ? "fin du mois" : Math.abs(pt.x - nowX) < 0.01 ? "maintenant" : `début du ${dayMonth(date)}`}
+                    title={pt.x >= end ? L("fin du mois", "end of month", "آخر الشهر") : Math.abs(pt.x - nowX) < 0.01 ? L("maintenant", "now", "توّا") : `${L("début du", "start of", "بداية")} ${dayMonth(date)}`}
                     rows={[
                       {
-                        label: isForecast ? "prévision ≈" : undefined,
+                        label: isForecast ? L("prévision ≈", "forecast ≈", "توقّع ≈") : undefined,
                         value: `${kwhValue(isForecast ? (pt.forecast ?? 0) : (pt.actual ?? 0))} kWh`,
                       },
                     ]}

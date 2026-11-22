@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { L } from "../../lib/i18n";
 import { Area, AreaChart, CartesianGrid, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { Series } from "../../lib/types";
 import { useChartColors } from "../../lib/theme";
@@ -102,8 +103,8 @@ function Strip({
                   title={hhmm(pt.x)}
                   rows={[
                     {
-                      label: isPower ? "puissance" : "débit",
-                      value: pt.v == null ? "mesure peu fiable" : fmt(pt.v),
+                      label: isPower ? L("puissance", "power", "القوة") : L("débit", "flow", "الدبي"),
+                      value: pt.v == null ? L("mesure peu fiable", "unreliable reading", "قياس موش مضمون") : fmt(pt.v),
                     },
                   ]}
                 />
@@ -163,7 +164,7 @@ export function DayCharts({
   liveFlow,
   now,
   show = "both",
-  title = "Aujourd'hui",
+  title,
 }: {
   power: Series | null;
   water: Series | null;
@@ -179,20 +180,20 @@ export function DayCharts({
   const loading = (show !== "flow" && !power) || (show !== "power" && !water);
 
   return (
-    <ChartCard title={title} unit={show === "both" ? "même axe du temps" : show === "power" ? "puissance · W" : "débit · L/min"}>
+    <ChartCard title={title ?? L("Aujourd'hui", "Today", "اليوم")} unit={show === "both" ? L("même axe du temps", "same time axis", "نفس محور الوقت") : show === "power" ? L("puissance · W", "power · W", "القوة · W") : L("débit · L/min", "flow · L/min", "الدبي · L/min")}>
       {loading ? (
         <Skeleton className={show === "both" ? "h-[260px]" : "h-[200px]"} />
       ) : (
         <div className="space-y-1">
           {show !== "flow" && (
             <div>
-              {show === "both" && <p className="t-label mb-1 text-elec-ink">Puissance · W</p>}
+              {show === "both" && <p className="t-label mb-1 text-elec-ink">{L("Puissance · W", "Power · W", "القوة · W")}</p>}
               <Strip kind="power" data={powerPts} liveX={liveX} liveValue={livePower} showAxis={show === "power"} height={show === "both" ? 112 : 200} />
             </div>
           )}
           {show !== "power" && (
             <div className={show === "both" ? "pt-2" : ""}>
-              {show === "both" && <p className="t-label mb-1 text-water-ink">Débit · L/min</p>}
+              {show === "both" && <p className="t-label mb-1 text-water-ink">{L("Débit · L/min", "Flow · L/min", "الدبي · L/min")}</p>}
               <Strip kind="flow" data={flowPts} liveX={liveX} liveValue={liveFlow} showAxis height={show === "both" ? 138 : 200} />
             </div>
           )}

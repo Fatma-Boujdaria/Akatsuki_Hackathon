@@ -1,122 +1,100 @@
 import { useState, type FormEvent } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
-import { Logo } from "../components/Logo";
-import { Field } from "../components/Field";
+import { ApiError } from "../lib/api";
+import { L } from "../lib/i18n";
+import { AuthShell } from "../components/AuthShell";
+import { CheckboxField, Field, PasswordField } from "../components/Field";
 import { Banner } from "../components/status";
 import { Button } from "../components/ui";
-import { TrancheBar } from "../components/TrancheBar";
-import type { TrancheView } from "../lib/tranche";
-
-// A static sample of the signature bar, the same one as on the charter's identity board.
-const SAMPLE: TrancheView = {
-  state: "safe",
-  used: 182,
-  next: 200,
-  crossedAt: null,
-  left: 18,
-  nextBandLabel: "201–300 kWh",
-  currentBandLabel: "1–200 kWh",
-  forecast: 260,
-  scaleMax: 300,
-  marks: [200, 300],
-  crossingDate: null,
-  forecastCrosses: true,
-};
 
 export function LoginPage() {
   const { user, login } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [unverified, setUnverified] = useState(false);
   const [busy, setBusy] = useState(false);
 
   if (user) {
     const from = (location.state as { from?: string } | null)?.from ?? "/";
-    return <Navigate to={from} replace />;
+    return <Navigate to={user.role === "admin" && from === "/" ? "/admin" : from} replace />;
   }
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    setUnverified(false);
     setBusy(true);
     try {
-      await login(email.trim(), password);
+      await login(email.trim(), password, remember);
     } catch (err) {
       setError((err as Error).message);
+      setUnverified(err instanceof ApiError && err.code === "email_not_verified");
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="grid grid-cols-1 min-h-dvh bg-canvas lg:grid-cols-2">
-      <div className="hidden flex-col justify-between border-r border-hairline p-12 lg:flex">
-        <Logo size={32} />
-        <div className="max-w-lg">
-          <p className="t-label mb-3 text-primary">Électricité · eau · STEG · SONEDE</p>
-          <h1 className="font-display text-[44px] leading-[50px] font-semibold tracking-[-1.5px] text-ink">
-            Vois ta facture avant qu'elle arrive.
-          </h1>
-          <p className="t-body mt-5 text-body">
-            Une box et un tableau de bord qui mesurent l'électricité et l'eau de ton foyer en temps réel, estiment la
-            facture STEG et SONEDE, et te préviennent avant un changement de tranche.
-          </p>
-          <div className="mt-10 rounded-card border border-hairline bg-surface p-6">
-            <p className="text-[17px] text-body">Encore</p>
-            <p className="t-hero text-ink">18 kWh</p>
-            <p className="t-body mb-5 text-body">avant la tranche 201–300 kWh</p>
-            <TrancheBar view={SAMPLE} />
-          </div>
+    <AuthShell
+      footer={
+        <p className="text-[14px] text-mute">
+          {L("Pas encore de compte ?", "No account yet?", "ما عندكش حساب؟")}{" "}
+          <Link to="/inscription" className="font-bold no-underline">
+            {L("Créer un compte", "Create an account", "اعمل حساب")}
+          </Link>
+        </p>
+      }
+    >
+      <form onSubmit={submit} className="flex flex-col gap-[18px]" noValidate>
+        <h1 className="sr-only">{L("Connexion", "Log in", "الدخول")}</h1>
+        <Field
+          label={L("E-mail", "Email", "الإيميل")}
+          type="email"
+          autoComplete="email"
+          inputMode="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="salma@exemple.tn"
+          dir="ltr"
+        />
+        <PasswordField
+          label={L("Mot de passe", "Password", "كلمة السر")}
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <div className="-mt-1.5 flex flex-wrap items-center justify-between gap-2">
+          <CheckboxField label={L("Se souvenir de moi", "Remember me", "تفكّرني")} checked={remember} onChange={setRemember} />
+          <Link to="/mot-de-passe-oublie" className="flex min-h-11 items-center text-[14px] font-semibold no-underline">
+            {L("Mot de passe oublié ?", "Forgot password?", "نسيت كلمة السر؟")}
+          </Link>
         </div>
-        <ul className="flex flex-wrap gap-2" aria-label="Personnalité">
-          {["Clair", "Calme", "Fiable", "Un peu joueur"].map((w) => (
-            <li key={w} className="rounded-full border border-hairline bg-surface px-3.5 py-1.5 text-[14px] text-ink">
-              {w}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="flex flex-col justify-center px-4 py-10 sm:px-10">
-        <div className="mx-auto w-full max-w-sm">
-          <div className="mb-8 lg:hidden">
-            <Logo size={36} wordmarkClass="text-[22px]" />
-            <p className="t-body mt-4 text-body">Vois ta facture avant qu'elle arrive.</p>
-          </div>
-          <h2 className="t-h1 text-ink">Connexion</h2>
-          <p className="t-small mt-1 text-mute">Avec le compte de ton foyer.</p>
-          <form onSubmit={submit} className="mt-7 space-y-5" noValidate>
-            <Field
-              label="Email"
-              type="email"
-              autoComplete="email"
-              inputMode="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="toi@exemple.tn"
-            />
-            <Field
-              label="Mot de passe"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            {error && (
-              <Banner tone="broken" role="alert">
-                {error}
-              </Banner>
-            )}
-            <Button type="submit" block disabled={busy || !email || !password}>
-              {busy ? "Connexion…" : "Se connecter"}
-            </Button>
-          </form>
-        </div>
-      </div>
-    </div>
+        {error && (
+          <Banner
+            tone="broken"
+            role="alert"
+            actions={
+              unverified ? (
+                <Button variant="secondary" onClick={() => navigate(`/inscription?verifier=${encodeURIComponent(email.trim())}`)}>
+                  {L("Saisir mon code", "Enter my code", "دخّل الكود")}
+                </Button>
+              ) : undefined
+            }
+          >
+            {error}
+          </Banner>
+        )}
+        <Button type="submit" size="lg" block disabled={busy || !email || !password}>
+          {busy ? L("Connexion…", "Logging in…", "قاعد يدخل…") : L("Se connecter", "Log in", "ادخل")}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

@@ -24,7 +24,8 @@ from sqlalchemy import delete, text  # noqa: E402
 
 from app import clock  # noqa: E402
 from app.db import Base, SessionLocal, init_engine  # noqa: E402
-from app.deps import ingest_limiter, login_limiter  # noqa: E402
+from app import monitor  # noqa: E402
+from app.deps import assistant_limiter, email_limiter, ingest_limiter, login_limiter, sensitive_limiter  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Device, Household, User  # noqa: E402
 from app.security import hash_api_key, hash_password  # noqa: E402
@@ -56,6 +57,7 @@ def engine():
             # The real Supabase migrations, so tests prove the SQL matches the models.
             conn.execute(text("drop schema public cascade; create schema public"))
             _run_sql_file(conn, MIGRATIONS / "20261121183251_init_schema.sql")
+            _run_sql_file(conn, MIGRATIONS / "20261122010811_full_app.sql")
         else:
             Base.metadata.create_all(conn)
     return engine
@@ -87,8 +89,9 @@ def clean_state(engine, frozen):
         for table in reversed(Base.metadata.sorted_tables):
             conn.execute(delete(table))
         _run_sql_file(conn, MIGRATIONS / "20261121183806_seed_tariffs.sql")
-    login_limiter.reset()
-    ingest_limiter.reset()
+    for limiter in (login_limiter, ingest_limiter, sensitive_limiter, email_limiter, assistant_limiter):
+        limiter.reset()
+    monitor.reset()
     clear_tariff_cache()
     demo._pending.clear()
     yield

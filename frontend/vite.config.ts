@@ -9,8 +9,8 @@ export default defineConfig(({ mode }) => {
   const backend = env.VITE_BACKEND_URL || "http://localhost:8000";
   return {
     plugins: [react(), tailwindcss()],
-    // React + Recharts ≈ 820 kB minified, 240 kB gzipped: fine for this dashboard.
-    build: { chunkSizeWarningLimit: 900 },
+    // React + Recharts + every screen ≈ 980 kB minified, 290 kB gzipped; the admin panel is a separate chunk.
+    build: { chunkSizeWarningLimit: 1100 },
     server: {
       port: 5173,
       host: true,

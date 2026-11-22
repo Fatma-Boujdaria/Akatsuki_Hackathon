@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { CircleAlert, Clock, TriangleAlert, WifiOff } from "lucide-react";
 import { cx, IconTile, Label } from "./ui";
 import { shortAge, time } from "../lib/format";
+import { L } from "../lib/i18n";
 import type { DeviceStatus, Live } from "../lib/types";
 
 // ---- Device status pills (board 05) -------------------------------------------------
@@ -9,7 +10,7 @@ import type { DeviceStatus, Live } from "../lib/types";
 type PillTone = "live" | "neutral" | "headsup" | "broken";
 
 const pillTones: Record<PillTone, string> = {
-  live: "bg-primary-soft text-primary",
+  live: "bg-success-soft text-success",
   neutral: "bg-sunken text-body",
   headsup: "bg-harissa-soft text-harissa",
   broken: "bg-grenade-soft text-grenade",
@@ -46,27 +47,27 @@ export function DevicePill({
   compact?: boolean;
   ageOverride?: number;
 }) {
-  if (!device || !live) return <Pill tone="neutral" icon={<Clock size={14} strokeWidth={1.75} />}>En attente</Pill>;
+  if (!device || !live) return <Pill tone="neutral" icon={<Clock size={14} strokeWidth={1.75} />}>{L("En attente", "Waiting", "في الانتظار")}</Pill>;
   const age = ageOverride ?? live.age_s;
   if (!device.online) {
-    const seen = device.last_seen_at ? ` · vu à ${time(device.last_seen_at)}` : "";
+    const seen = device.last_seen_at ? ` · ${L("vu à", "seen at", "آخر مرة")} ${time(device.last_seen_at)}` : "";
     return (
       <Pill tone="neutral" icon={<WifiOff size={14} strokeWidth={1.75} />}>
-        {compact ? "Hors ligne" : `Appareil hors ligne${seen}`}
+        {compact ? L("Hors ligne", "Offline", "مقطوع") : `${L("Appareil hors ligne", "Device offline", "البواطة مقطوعة")}${seen}`}
       </Pill>
     );
   }
   if (live.stale) {
     return (
       <Pill tone="neutral" icon={<Clock size={14} strokeWidth={1.75} />}>
-        Ancien · {shortAge(age)}
+        {L("Ancien", "Old", "قديم")} · {shortAge(age)}
       </Pill>
     );
   }
   return (
     <Pill tone="live" icon={<LiveDot />}>
-      <span className="font-mono text-[12px] tracking-[0.02em] tabular-nums">
-        {compact ? shortAge(age) : `En direct · il y a ${shortAge(age)}`}
+      <span className="text-[12px] font-bold tabular-nums">
+        {compact ? shortAge(age) : `${L("En direct", "Live", "مباشر")} · ${shortAge(age)}`}
       </span>
     </Pill>
   );
@@ -96,8 +97,8 @@ export function LiveCard({
     <div
       className={cx(
         "flex min-h-[132px] flex-col rounded-card p-4 sm:p-5",
-        status === "stale" && "border border-hairline bg-sunken",
-        status === "ok" && "border border-hairline bg-surface",
+        status === "stale" && "bg-sunken",
+        status === "ok" && "bg-surface",
         problem && "border border-dashed border-control bg-surface",
       )}
     >
@@ -111,17 +112,17 @@ export function LiveCard({
         {problem ? (
           <p
             className={cx(
-              "font-display text-[22px] leading-7 font-semibold tracking-[-0.5px]",
+              "font-display text-[20px] leading-7 font-extrabold",
               status === "fault" ? "text-grenade" : "text-harissa",
             )}
           >
-            {status === "fault" ? "Capteur en panne" : "Mesure peu fiable"}
+            {status === "fault" ? L("Capteur en panne", "Sensor fault", "الكابتور معطّل") : L("Mesure peu fiable", "Unreliable reading", "قياس موش مضمون")}
           </p>
         ) : (
           <p className={cx("t-metric", status === "stale" ? "text-mute" : "text-ink")}>{value ?? "—"}</p>
         )}
       </div>
-      <div className="mt-2 font-mono text-[12px] leading-4 text-mute">{footer}</div>
+      <div className="mt-2 text-[12px] leading-4 text-mute">{footer}</div>
     </div>
   );
 }
@@ -136,13 +137,14 @@ export function liveStatus(live: Live | null, part: "electricity" | "water"): Li
 }
 
 export function LiveFooter({ status, live }: { status: LiveCardStatus; live: Live | null }) {
-  if (!live) return <span>en attente de mesure</span>;
-  if (status === "unreliable" || status === "fault") return <span>jamais de valeur inventée</span>;
-  if (status === "stale") return <span>ancien · {time(live.ts)}</span>;
+  if (!live) return <span>{L("en attente de mesure", "waiting for a reading", "نستنّاو في القياس")}</span>;
+  if (status === "unreliable" || status === "fault")
+    return <span>{L("jamais de valeur inventée", "never a made-up value", "عمرنا ما نخترعو رقم")}</span>;
+  if (status === "stale") return <span>{L("ancien", "old", "قديم")} · {time(live.ts)}</span>;
   return (
     <span className="inline-flex items-center gap-1.5 text-mute">
-      <span aria-hidden className="size-1.5 rounded-full bg-primary" />
-      il y a {shortAge(live.age_s)}
+      <span aria-hidden className="size-1.5 rounded-full bg-success" />
+      {L("il y a", "", "قبل")} {shortAge(live.age_s)} {L("", "ago", "")}
     </span>
   );
 }
@@ -153,12 +155,12 @@ export type BannerTone = "info" | "headsup" | "broken";
 
 const bannerTones: Record<BannerTone, { box: string; title: string; icon: ReactNode }> = {
   info: {
-    box: "bg-sunken border-hairline",
+    box: "bg-surface border-hairline",
     title: "text-ink",
     icon: <CircleAlert size={20} strokeWidth={1.75} className="text-ink" />,
   },
   headsup: {
-    box: "bg-harissa-soft border-harissa-line",
+    box: "bg-harissa-soft border-harissa-line border-[1.5px]",
     title: "text-harissa",
     icon: <TriangleAlert size={20} strokeWidth={1.75} className="text-harissa" />,
   },
@@ -194,8 +196,12 @@ export function Banner({
           {icon ?? t.icon}
         </span>
         <div className="min-w-0 flex-1">
-          {title && <p className={cx("t-h3 text-[17px]", t.title)}>{title}</p>}
-          {children && <div className={cx("t-body text-body", !!title && "mt-1")}>{children}</div>}
+          {title && <p className={cx("text-[15px] leading-[22px] font-extrabold", t.title)}>{title}</p>}
+          {children && (
+            <div className={cx("text-[14px] leading-[21px]", tone === "headsup" ? "text-harissa-body" : "text-body", !!title && "mt-0.5")}>
+              {children}
+            </div>
+          )}
           {actions && <div className="mt-4 flex flex-wrap gap-3">{actions}</div>}
         </div>
       </div>

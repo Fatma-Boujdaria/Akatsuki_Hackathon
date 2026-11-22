@@ -8,13 +8,26 @@
 export const TZ = "Africa/Tunis";
 const NBSP = " "; // between a number and its unit, so they never wrap apart
 
+// Locale of numbers and dates, set by the language switch (lib/i18n.tsx).
+// ar-TN writes Latin digits (1 234,5) like the bills, with Arabic month names.
+type FmtLang = "fr" | "en" | "ar";
+let fmtLang: FmtLang = "fr";
+const LOCALES: Record<FmtLang, string> = { fr: "fr-FR", en: "en-GB", ar: "ar-TN-u-nu-latn" };
+
+export function setFormatLocale(l: FmtLang): void {
+  if (l === fmtLang) return;
+  fmtLang = l;
+  nfCache.clear();
+  dtfCache.clear();
+}
+
 const nfCache = new Map<string, Intl.NumberFormat>();
 function nf(min: number, max: number): Intl.NumberFormat {
   const key = `${min}-${max}`;
   let f = nfCache.get(key);
   if (!f) {
     // fr-FR groups thousands with a narrow no-break space (U+202F).
-    f = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: min, maximumFractionDigits: max });
+    f = new Intl.NumberFormat(LOCALES[fmtLang], { minimumFractionDigits: min, maximumFractionDigits: max });
     nfCache.set(key, f);
   }
   return f;
@@ -58,7 +71,7 @@ function dtf(opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
   const key = JSON.stringify(opts);
   let f = dtfCache.get(key);
   if (!f) {
-    f = new Intl.DateTimeFormat("fr-FR", { timeZone: TZ, ...opts });
+    f = new Intl.DateTimeFormat(LOCALES[fmtLang], { timeZone: TZ, ...opts });
     dtfCache.set(key, f);
   }
   return f;
@@ -82,13 +95,10 @@ export const weekdayShort = (d: Date | string) => dtf({ weekday: "short" }).form
 
 /** "il y a 4 s", "il y a 3 min", "il y a 2 h", "le 21 nov." */
 export function ago(seconds: number): string {
-  const s = Math.max(0, Math.round(seconds));
-  if (s < 60) return `il y a ${s}${NBSP}s`;
-  const m = Math.round(s / 60);
-  if (m < 60) return `il y a ${m}${NBSP}min`;
-  const h = Math.round(m / 60);
-  if (h < 48) return `il y a ${h}${NBSP}h`;
-  return `il y a ${Math.round(h / 24)}${NBSP}jours`;
+  const v = shortAge(seconds);
+  if (fmtLang === "en") return `${v} ago`;
+  if (fmtLang === "ar") return `قبل ${v}`;
+  return `il y a ${v}`;
 }
 
 /** "4 s", "3 min", "2 h": compact age for pills. */
@@ -99,7 +109,7 @@ export function shortAge(seconds: number): string {
   if (m < 60) return `${m}${NBSP}min`;
   const h = Math.round(m / 60);
   if (h < 48) return `${h}${NBSP}h`;
-  return `${Math.round(h / 24)}${NBSP}j`;
+  return `${Math.round(h / 24)}${NBSP}${fmtLang === "en" ? "d" : fmtLang === "ar" ? "يوم" : "j"}`;
 }
 
 export function hourLabel(h: number): string {

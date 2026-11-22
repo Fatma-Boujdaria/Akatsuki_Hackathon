@@ -7,7 +7,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app import clock
+from app import clock, monitor
 from app.db import get_db
 from app.deps import current_device, current_household
 from app.models import Device, Household
@@ -27,6 +27,7 @@ def post_reading(payload: ReadingIn, device: Device = Depends(current_device), d
     except IngestError as exc:
         db.rollback()
         log.warning("reading rejected from %s: %s (%s)", device.id, exc.code, exc.message)
+        monitor.incr("readings_rejected")
         raise HTTPException(exc.status_code, {"code": exc.code, "message": exc.message}) from None
 
     # Demo only: hand a pending "spike" to the simulator in its own response.

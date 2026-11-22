@@ -37,6 +37,7 @@ def create_alert_once(
     message: str,
     dedupe_key: str,
     extra_cost_dt: float | None = None,
+    params: dict | None = None,
 ) -> Alert | None:
     """Insert the alert unless one with the same dedupe_key exists. Returns it or None."""
     exists = db.scalar(
@@ -52,6 +53,7 @@ def create_alert_once(
         message=message,
         dedupe_key=dedupe_key,
         extra_cost_dt=extra_cost_dt,
+        params=params,
         created_at=clock.now_utc(),
     )
     try:
@@ -107,6 +109,16 @@ def check_threshold(db: Session, household: Household, status: consumption.Resou
         message=message,
         dedupe_key=f"threshold:{resource}:{threshold:g}:{status.month}",
         extra_cost_dt=extra,
+        params={
+            "variant": "near" if near else "forecast",
+            "unit": unit,
+            "threshold": threshold,
+            "used": round(used, 3),
+            "left": round(left, 3),
+            "forecast": None if forecast is None else round(forecast, 3),
+            "extra_dt": extra,
+            "next_unit_price_dt": status.unit_price_dt,
+        },
     )
 
 
@@ -172,6 +184,12 @@ def check_leak(db: Session, household: Household, device: Device, reading: Readi
         severity="critical",
         message=message,
         dedupe_key=f"leak:water:{device.id}:{window_start(local_ts, start_h, end_h).date().isoformat()}",
+        params={
+            "since": f"{clock.to_local(since):%H:%M}",
+            "minutes": round(total_min),
+            "litres": round(litres, 1),
+            "device": device.id,
+        },
     )
 
 
@@ -197,6 +215,7 @@ def check_sensor_faults(
             severity="warning",
             message=f"Le capteur {label} de l'appareil {device.id} ne répond pas. Vérifie son câblage.",
             dedupe_key=f"sensor_fault:{resource}:{device.id}:{day}",
+            params={"sensor": resource, "device": device.id},
         )
         if alert:
             created.append(alert)
@@ -222,6 +241,7 @@ def check_devices_offline(db: Session, household: Household, now: datetime) -> l
                 f"Vérifie le Wi-Fi et l'alimentation."
             ),
             dedupe_key=f"offline:{device.id}:{device.last_seen_at.isoformat()}",
+            params={"device": device.id, "since": device.last_seen_at.isoformat()},
         )
         if alert:
             created.append(alert)

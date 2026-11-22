@@ -13,10 +13,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app import clock
 from app.config import get_settings
 from app.db import get_db
-from app.deps import current_household, require_admin
-from app.models import Household, TariffFee, TariffTranche, User
+from app.deps import current_user, require_admin
+from app.models import TariffAudit, TariffFee, TariffTranche, User
 from app.schemas import FeeRow, TariffsIO, TrancheRow
 from app.services.tariff import clear_tariff_cache
 
@@ -56,7 +57,8 @@ def validate_grid(rows: list[TrancheRow]) -> None:
 
 
 @router.get("", response_model=TariffsIO)
-def read_tariffs(_household: Household = Depends(current_household), db: Session = Depends(get_db)) -> TariffsIO:
+def read_tariffs(_user: User = Depends(current_user), db: Session = Depends(get_db)) -> TariffsIO:
+    # Any logged-in account can read the grid (the admin panel has no household).
     return _current(db)
 
 
@@ -67,11 +69,54 @@ def replace_tariffs(body: TariffsIO, admin: User = Depends(require_admin), db: S
     if len(fee_keys) != len(set(fee_keys)):
         raise HTTPException(422, "a fee key appears twice for the same valid_from")
 
+    before = _current(db).model_dump(mode="json", exclude={"pricing_mode"})
     db.execute(delete(TariffTranche))
     db.execute(delete(TariffFee))
     db.add_all(TariffTranche(**r.model_dump(exclude={"id"})) for r in body.tranches)
     db.add_all(TariffFee(**f.model_dump(exclude={"id"})) for f in body.fees)
+    db.flush()
+    after = _current(db).model_dump(mode="json", exclude={"pricing_mode"})
+    # Audit log: who changed the tariffs, and the full grid before and after.
+    db.add(
+        TariffAudit(
+            admin_id=admin.id,
+            admin_email=admin.email,
+            summary=_summary(before, after),
+            before=before,
+            after=after,
+            created_at=clock.now_utc(),
+        )
+    )
     db.commit()
     clear_tariff_cache()
     log.info("tariffs replaced by %s: %d tranches, %d fees", admin.email, len(body.tranches), len(body.fees))
     return _current(db)
+
+
+def _summary(before: dict, after: dict) -> str:
+    """Short human-readable list of what changed (prices, bands, fees)."""
+
+    def bands(d: dict) -> dict:
+        return {
+            (t["resource"], t["valid_from"], float(t["min_qty"])): (t["max_qty"], t["price_millimes"], t["vat_rate"])
+            for t in d["tranches"]
+        }
+
+    def fees(d: dict) -> dict:
+        return {(f["key"], f["valid_from"]): f["value_millimes"] for f in d["fees"]}
+
+    changes = []
+    b, a = bands(before), bands(after)
+    for key in sorted(set(b) | set(a), key=str):
+        res, since, low = key
+        if key not in b:
+            changes.append(f"+ {res} {low:g}+ ({since}): {a[key][1]} mill.")
+        elif key not in a:
+            changes.append(f"- {res} {low:g}+ ({since})")
+        elif a[key] != b[key]:
+            changes.append(f"{res} {low:g}+ ({since}): {b[key][1]} -> {a[key][1]} mill., TVA {b[key][2]} -> {a[key][2]}")
+    fb, fa = fees(before), fees(after)
+    for key in sorted(set(fb) | set(fa), key=str):
+        if fb.get(key) != fa.get(key):
+            changes.append(f"{key[0]} ({key[1]}): {fb.get(key)} -> {fa.get(key)}")
+    return "; ".join(changes) or "aucun changement"

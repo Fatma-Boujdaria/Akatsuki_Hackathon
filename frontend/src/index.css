@@ -4,85 +4,116 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ------------------------------------------------------------------------------
-   Tranche Guard graphic charter, V1 — Sicily palette.
-   Semantic tokens: components use these names, never raw hex codes.
+   Tranche Guard — "App Screens" design (claude.ai design canvas), Sicily palette:
+   Bahr #1D59BB (brand), Chams #FEBD19 (electricity), Ciel #76B9FF (water),
+   Sable #FEF3B3, navy #0D1820. Dark first, light twin. Plus Jakarta Sans.
+   Components use these semantic names, never raw hex codes.
    ------------------------------------------------------------------------------ */
 :root {
   color-scheme: light;
 
-  /* Neutrals, tinted toward the palette navy */
-  --canvas: #f5f7fa;
+  --canvas: #eef4fb;
   --surface: #ffffff;
-  --sunken: #ecf0f5;
-  --hairline: #dde3ea;
-  --control: #7c8796;
-  --mute: #5a6576;
-  --body: #354150;
-  --ink: #0d171f;
+  --sunken: #e4ecf5;
+  --hairline: #dce6f0;
+  --control: #8496a8;
+  --mute: #4a5b6c;
+  --body: #24384c;
+  --ink: #0d1820;
+  --chip: #24384c; /* text of an inactive chip */
 
-  /* Action · brand: Bahr, the only colour you can click */
+  /* Action: Bahr in light */
   --primary: #1d59bb;
   --primary-hover: #174a9e;
-  --primary-soft: #e3ecf8;
+  --primary-soft: #dfeafa;
   --on-primary: #ffffff;
+  --link: #1d59bb;
+  --chip-active: #1d59bb;
+  --on-chip-active: #ffffff;
+  --nav-active: #1d59bb;
 
-  /* Electricity: Chams (fill), stroke and ink for lines / text, Sable soft */
+  /* Electricity: Chams fill, ink for text on light */
   --elec: #febd19;
   --elec-stroke: #a87000;
-  --elec-ink: #7f5600;
+  --elec-ink: #8a5e00;
   --elec-soft: #fef3b3;
 
-  /* Water: Ciel (fill only), ink for lines / icons / text */
+  /* Water: Ciel fill, Bahr ink on light */
   --water: #76b9ff;
-  --water-ink: #2b6fc2;
+  --water-ink: #1d59bb;
   --water-soft: #e3f0ff;
 
-  /* Status, outside the palette on purpose */
-  --harissa: #c2401b; /* heads-up: a tranche is near or crossed */
-  --harissa-soft: #fbe5dc;
-  --harissa-line: #f0bfae;
-  --grenade: #a3183f; /* broken: leaks, faults, errors */
-  --grenade-soft: #f9e0e7;
-  --grenade-line: #edb8c6;
+  /* Tranche bar fill */
+  --bar: #1d59bb;
+  --bar-track: #dce6f0;
+
+  /* Status */
+  --success: #15803d;
+  --success-soft: #dcf5e7;
+  --harissa: #a15c00; /* heads-up: a tranche is near or crossed */
+  --harissa-soft: #fff4d6;
+  --harissa-line: #febd19;
+  --harissa-body: #5c4400;
+  --grenade: #b42318; /* broken: leaks, faults, errors */
+  --grenade-soft: #fde8e6;
+  --grenade-line: #f5b5ae;
+  --tile: #e3f0ff; /* icon tile behind a tip */
 
   /* Fixed brand colours (logo) */
   --bahr: #1d59bb;
+  --ciel: #76b9ff;
+  --sable: #fef3b3;
   --chams: #febd19;
+  --brand-accent: #8a5e00; /* "Guard" in the wordmark */
 }
 
-/* Dark theme: the palette's own navy. Ciel takes over actions. */
+/* Dark theme: the design's main artboard. */
 .dark {
   color-scheme: dark;
 
-  --canvas: #0d171f;
-  --surface: #13212c;
-  --sunken: #1b2b38;
-  --hairline: #263848;
-  --control: #6f7e8f;
-  --mute: #95a3b3;
-  --body: #c4cfdb;
-  --ink: #eaf0f6;
+  --canvas: #0d1820;
+  --surface: #16273a;
+  --sunken: #1b2f44;
+  --hairline: #24384c;
+  --control: #6f8397;
+  --mute: #9fb1c2;
+  --body: #d5e1ec;
+  --ink: #ffffff;
+  --chip: #d5e1ec;
 
-  --primary: #76b9ff;
-  --primary-hover: #9ccbff;
-  --primary-soft: #1b2b38;
-  --on-primary: #0d171f;
+  --primary: #febd19;
+  --primary-hover: #ffcd4d;
+  --primary-soft: #2a2410;
+  --on-primary: #0d1820;
+  --link: #76b9ff;
+  --chip-active: #ffffff;
+  --on-chip-active: #0d1820;
+  --nav-active: #febd19;
 
   --elec: #febd19;
   --elec-stroke: #febd19;
   --elec-ink: #febd19;
-  --elec-soft: #34372a;
+  --elec-soft: #2a2410;
 
   --water: #76b9ff;
   --water-ink: #76b9ff;
-  --water-soft: #22384c;
+  --water-soft: #1d3b5e;
 
-  --harissa: #ff8a63;
-  --harissa-soft: #2a2b31;
-  --harissa-line: #6b3b2c;
-  --grenade: #f27a98;
-  --grenade-soft: #292a37;
-  --grenade-line: #6a2e42;
+  --bar: #76b9ff;
+  --bar-track: #24384c;
+
+  --success: #3ddc97;
+  --success-soft: #143327;
+  --harissa: #febd19;
+  --harissa-soft: #2a2410;
+  --harissa-line: #febd19;
+  --harissa-body: #e9ddb0;
+  --grenade: #ff9a8a;
+  --grenade-soft: #3a1f22;
+  --grenade-line: #6b3236;
+  --tile: #1d3b5e;
+
+  --brand-accent: #febd19;
 }
 
 @theme inline {
@@ -94,11 +125,16 @@
   --color-mute: var(--mute);
   --color-body: var(--body);
   --color-ink: var(--ink);
+  --color-chip: var(--chip);
 
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
   --color-on-primary: var(--on-primary);
+  --color-link: var(--link);
+  --color-chip-active: var(--chip-active);
+  --color-on-chip-active: var(--on-chip-active);
+  --color-nav-active: var(--nav-active);
 
   --color-elec: var(--elec);
   --color-elec-stroke: var(--elec-stroke);
@@ -109,115 +145,117 @@
   --color-water-ink: var(--water-ink);
   --color-water-soft: var(--water-soft);
 
+  --color-bar: var(--bar);
+  --color-bar-track: var(--bar-track);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
   --color-harissa: var(--harissa);
   --color-harissa-soft: var(--harissa-soft);
   --color-harissa-line: var(--harissa-line);
+  --color-harissa-body: var(--harissa-body);
   --color-grenade: var(--grenade);
   --color-grenade-soft: var(--grenade-soft);
   --color-grenade-line: var(--grenade-line);
+  --color-tile: var(--tile);
 
   --color-bahr: var(--bahr);
+  --color-ciel: var(--ciel);
+  --color-sable: var(--sable);
   --color-chams: var(--chams);
+  --color-brand-accent: var(--brand-accent);
 }
 
 @theme {
-  /* Grotesk counts, Inter explains, Mono measures */
-  --font-display: "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", "Noto Sans Arabic", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Noto Sans Arabic", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
 
-  /* Radius 10 for controls, 14 for cards */
-  --radius-ctl: 10px;
-  --radius-card: 14px;
+  /* Design: 20 px cards, 14 px inputs and small tiles, 12 px chips inside cards */
+  --radius-ctl: 14px;
+  --radius-card: 20px;
 }
 
-/* ---- Type scale (board 04) ------------------------------------------------- */
+/* ---- Type scale ---------------------------------------------------------------- */
 @utility t-hero {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 48px;
-  line-height: 48px;
-  letter-spacing: -2px;
+  font-weight: 800;
+  font-size: 40px;
+  line-height: 44px;
+  letter-spacing: -1px;
   font-variant-numeric: tabular-nums;
   @media (width >= 40rem) {
-    font-size: 56px;
-    line-height: 56px;
+    font-size: 48px;
+    line-height: 52px;
   }
 }
 @utility t-display {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 32px;
-  line-height: 38px;
-  letter-spacing: -1px;
-  @media (width >= 40rem) {
-    font-size: 40px;
-    line-height: 46px;
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 30px;
+  letter-spacing: -0.3px;
+  @media (width >= 64rem) {
+    font-size: 28px;
+    line-height: 36px;
   }
 }
 @utility t-h1 {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 28px;
+  font-variant-numeric: tabular-nums;
+}
+@utility t-metric {
+  font-family: var(--font-display);
+  font-weight: 800;
   font-size: 28px;
   line-height: 34px;
   letter-spacing: -0.5px;
   font-variant-numeric: tabular-nums;
 }
-@utility t-metric {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 32px;
-  line-height: 38px;
-  letter-spacing: -1px;
-  font-variant-numeric: tabular-nums;
-}
 @utility t-h2 {
   font-family: var(--font-sans);
-  font-weight: 600;
-  font-size: 20px;
-  line-height: 28px;
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 26px;
 }
 @utility t-h3 {
   font-family: var(--font-sans);
-  font-weight: 600;
-  font-size: 16px;
-  line-height: 24px;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 22px;
 }
 @utility t-body {
   font-family: var(--font-sans);
   font-weight: 400;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 15px;
+  line-height: 23px;
 }
 @utility t-small {
   font-family: var(--font-sans);
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 20px;
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 19px;
 }
 @utility t-label {
-  font-family: var(--font-mono);
-  font-weight: 500;
-  font-size: 12px;
-  line-height: 16px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 18px;
 }
 @utility t-data {
-  font-family: var(--font-mono);
-  font-weight: 500;
+  font-family: var(--font-sans);
+  font-weight: 700;
   font-size: 14px;
   line-height: 20px;
   font-variant-numeric: tabular-nums;
 }
 
-/* Crossed tranche: the extra kWh are hatched in Harissa */
+/* Forecast part of a tranche bar: Chams hatching (design) */
 @utility hatch-harissa {
-  background-image: repeating-linear-gradient(
-    135deg,
-    var(--harissa) 0 3px,
-    transparent 3px 6px
-  );
+  background-image: repeating-linear-gradient(135deg, var(--chams) 0 4px, transparent 4px 7px);
 }
 
 @layer base {
@@ -227,16 +265,21 @@
   }
   body {
     background: var(--canvas);
-    color: var(--body);
+    color: var(--ink);
     font-family: var(--font-sans);
-    font-size: 16px;
-    line-height: 24px;
+    font-size: 15px;
+    line-height: 23px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
+  /* Tunisian Arabic: Noto Sans Arabic first, a little more line height. */
+  html[lang="ar-TN"] body {
+    font-family: "Noto Sans Arabic", "Plus Jakarta Sans", "Segoe UI", Tahoma, sans-serif;
+    line-height: 26px;
+  }
   :focus-visible {
-    outline: 2px solid var(--primary);
+    outline: 2px solid var(--link);
     outline-offset: 2px;
   }
   ::selection {
@@ -249,9 +292,12 @@
   button {
     font: inherit;
   }
+  a {
+    color: var(--link);
+  }
 }
 
-/* ---- Living logo animations (header only) ----------------------------------- */
+/* ---- Animations ------------------------------------------------------------------ */
 @keyframes tg-bar-rise {
   0%,
   100% {
@@ -278,10 +324,49 @@
 .tg-live-dot {
   animation: tg-pulse 2s ease-in-out infinite;
 }
+/* Energy flowing along the dotted lines of the house illustration */
+@keyframes tg-flow {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+.tg-flow {
+  animation: tg-flow 1.2s linear infinite;
+}
+@keyframes tg-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.tg-fade-up {
+  animation: tg-fade-up 0.4s ease-out both;
+}
+@keyframes tg-loading-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+.tg-loading-bar {
+  animation: tg-loading-bar 1.3s ease-in-out infinite;
+}
+html[dir="rtl"] .tg-loading-bar {
+  animation-direction: reverse;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .tg-bar-loading,
-  .tg-live-dot {
+  .tg-live-dot,
+  .tg-flow,
+  .tg-fade-up,
+  .tg-loading-bar {
     animation: none;
   }
   *,
@@ -295,4 +380,12 @@
 .recharts-wrapper:focus,
 .recharts-surface:focus {
   outline: none;
+}
+
+/* Hide the scrollbar of horizontal chip rows */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

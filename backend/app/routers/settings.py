@@ -29,6 +29,9 @@ def _settings_out(db: Session, household: Household) -> SettingsOut:
         active_device_id=household.active_device_id,
         devices=[device_status(d, now) for d in devices],
         demo_mode=get_settings().demo_mode,
+        address=household.address,
+        occupants=household.occupants,
+        onboarding_done=household.onboarding_done,
     )
 
 
@@ -42,6 +45,8 @@ def update_settings(
     body: SettingsIn, household: Household = Depends(current_household), db: Session = Depends(get_db)
 ) -> SettingsOut:
     changes = body.model_dump(exclude_unset=True, exclude={"active_device_id", "clear_active_device"})
+    # Only address and occupants may be cleared; a null elsewhere means "no change".
+    changes = {k: v for k, v in changes.items() if v is not None or k in ("address", "occupants")}
     start = changes.get("leak_start_hour", household.leak_start_hour)
     end = changes.get("leak_end_hour", household.leak_end_hour)
     if start == end:

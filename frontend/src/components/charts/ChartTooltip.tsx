@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-export const AXIS_FONT = '"JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace';
-export const SANS_FONT = '"Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif';
+export const AXIS_FONT = '"Plus Jakarta Sans", "Noto Sans Arabic", ui-sans-serif, system-ui, sans-serif';
+export const SANS_FONT = '"Plus Jakarta Sans", "Noto Sans Arabic", ui-sans-serif, system-ui, sans-serif';
 
 export function TooltipBox({ title, rows }: { title: ReactNode; rows: { label?: string; value: ReactNode; swatch?: ReactNode }[] }) {
   return (

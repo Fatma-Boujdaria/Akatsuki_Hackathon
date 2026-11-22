@@ -39,7 +39,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.toggle("dark", resolved === "dark");
     document
       .querySelectorAll('meta[name="theme-color"]')
-      .forEach((m) => m.setAttribute("content", resolved === "dark" ? "#0D171F" : "#F5F7FA"));
+      .forEach((m) => m.setAttribute("content", resolved === "dark" ? "#0D1820" : "#EEF4FB"));
   }, [resolved]);
 
   const value = useMemo<ThemeCtx>(
@@ -69,32 +69,32 @@ export function useTheme(): ThemeCtx {
 /** Chart colours as plain hex (SVG attributes can't read CSS variables). */
 export const CHART = {
   light: {
-    grid: "#DDE3EA",
-    axis: "#5A6576",
-    ink: "#0D171F",
-    body: "#354150",
+    grid: "#DCE6F0",
+    axis: "#4A5B6C",
+    ink: "#0D1820",
+    body: "#24384C",
     surface: "#FFFFFF",
     elecStroke: "#A87000",
     elecFill: "#FEF3B3",
     elecDot: "#FEBD19",
-    waterStroke: "#2B6FC2",
-    waterFill: "#E3F0FF",
-    harissa: "#C2401B",
-    cursor: "#7C8796",
+    waterStroke: "#1D59BB",
+    waterFill: "#DCEBFF",
+    harissa: "#A15C00",
+    cursor: "#8496A8",
   },
   dark: {
-    grid: "#263848",
-    axis: "#95A3B3",
-    ink: "#EAF0F6",
-    body: "#C4CFDB",
-    surface: "#13212C",
+    grid: "#24384C",
+    axis: "#9FB1C2",
+    ink: "#FFFFFF",
+    body: "#D5E1EC",
+    surface: "#16273A",
     elecStroke: "#FEBD19",
-    elecFill: "#34372A",
+    elecFill: "#2A2410",
     elecDot: "#FEBD19",
     waterStroke: "#76B9FF",
-    waterFill: "#22384C",
-    harissa: "#FF8A63",
-    cursor: "#6F7E8F",
+    waterFill: "#1D3B5E",
+    harissa: "#FEBD19",
+    cursor: "#6F8397",
   },
 } as const;
 

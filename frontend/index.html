@@ -3,18 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#F5F7FA" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0D171F" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#EEF4FB" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0D1820" media="(prefers-color-scheme: dark)" />
     <meta name="description" content="Tranche Guard : vois ta facture STEG et SONEDE avant qu'elle arrive." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/app-icon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Plus Jakarta Sans (Latin) and Noto Sans Arabic (Tunisian Arabic). Without network
+         the app falls back to the system font. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700;800&display=swap"
+    />
     <title>Tranche Guard</title>
     <script>
-      // Apply the saved theme before first paint (no flash of the wrong theme).
+      // Apply the saved theme and language before first paint (no flash).
       try {
         var t = localStorage.getItem("tg-theme");
         var dark = t === "dark" || ((!t || t === "system") && matchMedia("(prefers-color-scheme: dark)").matches);
         if (dark) document.documentElement.classList.add("dark");
+        var l = localStorage.getItem("tg-lang");
+        if (l === "ar") { document.documentElement.lang = "ar-TN"; document.documentElement.dir = "rtl"; }
+        else if (l === "en") document.documentElement.lang = "en";
       } catch (e) {}
     </script>
   </head>

@@ -1,4 +1,5 @@
 import { TriangleAlert } from "lucide-react";
+import { L } from "../lib/i18n";
 import type { TrancheView } from "../lib/tranche";
 import { dtUnit, kwh, kwhValue, num } from "../lib/format";
 import { cx } from "./ui";
@@ -48,7 +49,7 @@ export function TrancheBar({
       {showHeader && (
         <div className="mb-2 flex items-baseline justify-between gap-3">
           <span className="t-label text-mute">
-            {state === "safe" ? "sous la tranche" : state === "near" ? "tranche proche" : state === "crossed" ? "tranche dépassée" : "consommation"}
+            {state === "safe" ? L("sous la tranche", "below the tranche", "تحت الشريحة") : state === "near" ? L("tranche proche", "tranche near", "الشريحة قريبة") : state === "crossed" ? L("tranche dépassée", "tranche crossed", "تعدّيت الشريحة") : L("consommation", "consumption", "الاستهلاك")}
           </span>
           <span
             className={cx(

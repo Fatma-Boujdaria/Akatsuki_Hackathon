@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocation } from "react-router-dom";
-import { Cpu, LogOut, Monitor, Moon, Plus, Sun, Trash2, Zap } from "lucide-react";
+import { Cpu, Monitor, Moon, Plus, Sun, Trash2, Zap } from "lucide-react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useData } from "../lib/data";
@@ -8,6 +8,8 @@ import { useTheme, type ThemeChoice } from "../lib/theme";
 import { usePoll } from "../lib/usePoll";
 import { dateTime, num } from "../lib/format";
 import { Field, SelectField } from "../components/Field";
+import { L } from "../lib/i18n";
+import { AccountSettings } from "../components/AccountSettings";
 import { Banner, Pill } from "../components/status";
 import { Button, ButtonLink, Card, CardHeader, IconTile, Label, PageHeader, Segmented, Skeleton, cx } from "../components/ui";
 import type { FeeRow, Resource, Settings, SpikeOut, Tariffs, TrancheRow } from "../lib/types";
@@ -19,9 +21,9 @@ function SaveRow({ busy, saved, error, disabled }: { busy: boolean; saved: boole
   return (
     <div className="mt-6 flex flex-wrap items-center gap-3">
       <Button type="submit" disabled={busy || disabled}>
-        {busy ? "Enregistrement…" : "Enregistrer"}
+        {busy ? L("Enregistrement…", "Saving…", "قاعد يسجّل…") : L("Enregistrer", "Save", "سجّل")}
       </Button>
-      {saved && !error && <span className="t-small text-primary" role="status">Enregistré.</span>}
+      {saved && !error && <span className="t-small font-bold text-success" role="status">{L("Enregistré.", "Saved.", "تسجّل.")}</span>}
       {error && (
         <span className="t-small text-grenade" role="alert">
           {error}
@@ -61,9 +63,9 @@ function HouseholdForm({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => 
 
   const kvaNum = Number(kva.replace(",", "."));
   const marginNum = Number(margin);
-  const kvaError = !kva || !(kvaNum > 0 && kvaNum <= 100) ? "Indique une puissance entre 1 et 100 kVA." : null;
-  const marginError = !Number.isInteger(marginNum) || marginNum < 1 || marginNum > 50 ? "Choisis une valeur entre 1 et 50." : null;
-  const nameError = !name.trim() ? "Donne un nom à ton foyer." : null;
+  const kvaError = !kva || !(kvaNum > 0 && kvaNum <= 100) ? L("Indique une puissance entre 1 et 100 kVA.", "Enter a power between 1 and 100 kVA.", "اكتب قوة بين 1 و100 kVA.") : null;
+  const marginError = !Number.isInteger(marginNum) || marginNum < 1 || marginNum > 50 ? L("Choisis une valeur entre 1 et 50.", "Pick a value between 1 and 50.", "اختار قيمة بين 1 و50.") : null;
+  const nameError = !name.trim() ? L("Donne un nom à ton foyer.", "Give your home a name.", "عطي اسم للدار.") : null;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -75,25 +77,25 @@ function HouseholdForm({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => 
 
   return (
     <Card>
-      <CardHeader title="Foyer" />
+      <CardHeader title={L("Foyer", "Home", "الدار")} />
       <form onSubmit={submit} noValidate className="space-y-5">
-        <Field label="Nom du foyer" value={name} onChange={(e) => setName(e.target.value)} error={nameError} maxLength={100} />
+        <Field label={L("Nom du foyer", "Home name", "اسم الدار")} value={name} onChange={(e) => setName(e.target.value)} error={nameError} maxLength={100} />
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Field
-            label="Puissance souscrite (kVA)"
+            label={L("Puissance souscrite (kVA)", "Subscribed power (kVA)", "القوة المشترك فيها (kVA)")}
             inputMode="decimal"
             value={kva}
             onChange={(e) => setKva(e.target.value)}
-            help="Indiquée sur ta facture STEG."
+            help={L("Indiquée sur ta facture STEG.", "Shown on your STEG bill.", "مكتوبة في فاتورة STEG.")}
             error={kva !== String(s.subscribed_kva) ? kvaError : null}
             suffix="kVA"
           />
           <Field
-            label="Marge d'alerte (kWh)"
+            label={L("Marge d'alerte (kWh)", "Alert margin (kWh)", "هامش التنبيه (kWh)")}
             inputMode="numeric"
             value={margin}
             onChange={(e) => setMargin(e.target.value.replace(/[^\d]/g, ""))}
-            help="Choisis une valeur entre 1 et 50."
+            help={L(L("Choisis une valeur entre 1 et 50.", "Pick a value between 1 and 50.", "اختار قيمة بين 1 و50."), "Pick a value between 1 and 50.", "اختار قيمة بين 1 و50.")}
             error={margin !== String(s.alert_margin_kwh) ? marginError : null}
             suffix="kWh"
           />
@@ -112,8 +114,8 @@ function LeakForm({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void 
   const [minutes, setMinutes] = useState(String(s.leak_min_minutes));
   const saver = useSaver();
   const minNum = Number(minutes);
-  const sameError = start === end ? "Le début et la fin doivent être différents." : null;
-  const minError = !Number.isInteger(minNum) || minNum < 1 || minNum > 720 ? "Choisis une durée entre 1 et 720 minutes." : null;
+  const sameError = start === end ? L("Le début et la fin doivent être différents.", "Start and end must differ.", "البداية والنهاية لازم يختلفو.") : null;
+  const minError = !Number.isInteger(minNum) || minNum < 1 || minNum > 720 ? L("Choisis une durée entre 1 et 720 minutes.", "Pick a duration between 1 and 720 minutes.", "اختار مدة بين 1 و720 دقيقة.") : null;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -125,20 +127,24 @@ function LeakForm({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void 
 
   return (
     <Card id="fuites" className="scroll-mt-24">
-      <CardHeader title="Surveillance des fuites" />
+      <CardHeader title={L("Surveillance des fuites", "Leak watch", "مراقبة التسريبات")} />
       <p className="t-small -mt-2 mb-5 text-mute">
-        La nuit, personne ne devrait utiliser d'eau. Une eau qui coule sans arrêt dans cette fenêtre déclenche une alerte.
+        {L(
+          "La nuit, personne ne devrait utiliser d'eau. Une eau qui coule sans arrêt dans cette fenêtre déclenche une alerte.",
+          "At night nobody should use water. Water running non-stop in this window raises an alert.",
+          "في الليل ما لازم حد يستعمل الماء. كان الماء يجري بلا وقفة في الوقت هذا، يجيك تنبيه.",
+        )}
       </p>
       <form onSubmit={submit} noValidate className="space-y-5">
         <div className="grid grid-cols-2 gap-5">
-          <SelectField label="Début" value={start} onChange={(e) => setStart(Number(e.target.value))} error={sameError}>
+          <SelectField label={L("Début", "Start", "البداية")} value={start} onChange={(e) => setStart(Number(e.target.value))} error={sameError}>
             {HOURS.map((h) => (
               <option key={h} value={h}>
                 {hh(h)}
               </option>
             ))}
           </SelectField>
-          <SelectField label="Fin" value={end} onChange={(e) => setEnd(Number(e.target.value))}>
+          <SelectField label={L("Fin", "End", "النهاية")} value={end} onChange={(e) => setEnd(Number(e.target.value))}>
             {HOURS.map((h) => (
               <option key={h} value={h}>
                 {hh(h)}
@@ -147,11 +153,11 @@ function LeakForm({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void 
           </SelectField>
         </div>
         <Field
-          label="Durée avant l'alerte (minutes)"
+          label={L("Durée avant l'alerte (minutes)", "Duration before the alert (minutes)", "المدة قبل التنبيه (دقايق)")}
           inputMode="numeric"
           value={minutes}
           onChange={(e) => setMinutes(e.target.value.replace(/[^\d]/g, ""))}
-          help="120 min par défaut. Pour la démo, mets 2 min."
+          help={L("120 min par défaut. Pour la démo, mets 2 min.", "120 min by default. For the demo, use 2 min.", "120 دقيقة عادة. للديمو حط 2 دقايق.")}
           error={minutes !== String(s.leak_min_minutes) ? minError : null}
           suffix="min"
         />
@@ -172,18 +178,18 @@ function DevicesCard({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => vo
   const options: { id: string | null; title: string; sub: string; online?: boolean; seen?: string | null }[] = [
     ...s.devices.map((d) => ({
       id: d.id,
-      title: d.kind === "simulator" ? `Simulateur · ${d.id}` : `Boîtier ESP32 · ${d.id}`,
-      sub: d.kind === "simulator" ? "Envoie le même JSON que la box" : "PZEM-004T · YF-S201",
+      title: d.kind === "simulator" ? `${L("Simulateur", "Simulator", "سيمولاتور")} · ${d.id}` : `${L("Boîtier ESP32", "ESP32 box", "بواطة ESP32")} · ${d.id}`,
+      sub: d.kind === "simulator" ? L("Envoie le même JSON que la box", "Sends the same JSON as the box", "يبعث نفس الـ JSON متاع البواطة") : "PZEM-004T · YF-S201",
       online: d.online,
       seen: d.last_seen_at,
     })),
-    { id: null, title: "Tous les appareils", sub: "Additionne les mesures de chaque appareil" },
+    { id: null, title: L("Tous les appareils", "All devices", "البواطات الكل"), sub: L("Additionne les mesures de chaque appareil", "Adds up every device's readings", "يجمع القياسات الكل") },
   ];
 
   return (
     <Card id="appareil" className="scroll-mt-24">
-      <CardHeader title="Appareil actif" />
-      <div role="radiogroup" aria-label="Appareil actif" className="space-y-2.5">
+      <CardHeader title={L("Appareil actif", "Active device", "البواطة المستعملة")} />
+      <div role="radiogroup" aria-label={L("Appareil actif", "Active device", "البواطة المستعملة")} className="space-y-2.5">
         {options.map((o) => {
           const active = o.id === s.active_device_id;
           return (
@@ -195,7 +201,7 @@ function DevicesCard({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => vo
               disabled={saver.busy}
               onClick={() => !active && choose(o.id)}
               className={cx(
-                "flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-ctl border px-4 py-3 text-left transition-colors disabled:cursor-wait",
+                "flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-ctl border px-4 py-3 text-start transition-colors disabled:cursor-wait",
                 active ? "border-primary bg-primary-soft" : "border-hairline bg-surface hover:bg-sunken",
               )}
             >
@@ -217,9 +223,9 @@ function DevicesCard({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => vo
               </span>
               {o.online !== undefined &&
                 (o.online ? (
-                  <Pill tone="live">En direct</Pill>
+                  <Pill tone="live">{L("En direct", "Live", "مباشر")}</Pill>
                 ) : (
-                  <Pill tone="neutral">{o.seen ? `vu ${dateTime(o.seen)}` : "jamais vu"}</Pill>
+                  <Pill tone="neutral">{o.seen ? `${L("vu", "seen", "آخر مرة")} ${dateTime(o.seen)}` : L("jamais vu", "never seen", "عمرو ما تشاف")}</Pill>
                 ))}
             </button>
           );
@@ -253,23 +259,29 @@ function DemoCard({ onDone }: { onDone: () => void }) {
 
   return (
     <Card id="demo" className="scroll-mt-24">
-      <CardHeader title="Contrôle démo" aside={<Pill tone="neutral">DEMO_MODE</Pill>} />
+      <CardHeader title={L("Contrôle démo", "Demo control", "التحكم في الديمو")} aside={<Pill tone="neutral">DEMO_MODE</Pill>} />
       <p className="t-body text-body">
-        Ajoute un pic de +3,5 kW pendant 30 s au simulateur et assez de kWh pour entrer dans la marge d'alerte. L'alerte
-        de tranche et les conseils apparaissent en une dizaine de secondes.
+        {L(
+          "Ajoute un pic de +3,5 kW pendant 30 s au simulateur et assez de kWh pour entrer dans la marge d'alerte. L'alerte de tranche et les conseils apparaissent en une dizaine de secondes.",
+          "Adds a +3.5 kW spike for 30 s to the simulator and enough kWh to enter the alert margin. The tranche alert and tips show up within about ten seconds.",
+          "يزيد قمة +3,5 kW لمدة 30 ثانية للسيمولاتور وkWh كافية باش تدخل في هامش التنبيه. التنبيه والنصائح يبانو في عشرة ثواني تقريبا.",
+        )}
       </p>
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <Button onClick={spike} disabled={busy}>
           <Zap size={18} strokeWidth={1.75} aria-hidden />
-          {busy ? "Envoi…" : "Simuler un pic"}
+          {busy ? L("Envoi…", "Sending…", "قاعد يبعث…") : L("Simuler un pic", "Simulate a spike", "اعمل قمة")}
         </Button>
         <ButtonLink to="/esp" variant="secondary">
-          <Cpu size={18} strokeWidth={1.5} aria-hidden /> Contrôle ESP
+          <Cpu size={18} strokeWidth={1.5} aria-hidden /> {L("Contrôle ESP", "ESP control", "التحكم في ESP")}
         </ButtonLink>
       </div>
       <p className="t-small mt-3 text-mute">
-        Contrôle ESP : un boîtier virtuel dans le navigateur. Règle la puissance, le débit, les pannes et le compteur à la
-        main, sans le simulateur Python.
+        {L(
+          "Contrôle ESP : un boîtier virtuel dans le navigateur. Règle la puissance, le débit, les pannes et le compteur à la main, sans le simulateur Python.",
+          "ESP control: a virtual box in the browser. Set power, flow, faults and the meter by hand, without the Python simulator.",
+          "التحكم في ESP: بواطة افتراضية في المتصفح. بدّل القوة والدبي والأعطال والكونتور بيدك.",
+        )}
       </p>
       {result && (
         <Banner tone={result.simulator_online ? "info" : "headsup"} className="mt-4" role="status">
@@ -292,7 +304,7 @@ function DemoCard({ onDone }: { onDone: () => void }) {
 
 type Draft = Tariffs;
 
-function TariffCard({ isAdmin }: { isAdmin: boolean }) {
+export function TariffCard({ isAdmin }: { isAdmin: boolean }) {
   const tariffs = usePoll((s) => api.tariffs(s), 0);
   const [draft, setDraft] = useState<Draft | null>(null);
   const saver = useSaver();
@@ -329,8 +341,8 @@ function TariffCard({ isAdmin }: { isAdmin: boolean }) {
     });
 
   const groups: { resource: Resource; title: string; unit: string }[] = [
-    { resource: "electricity", title: "Électricité · STEG", unit: "kWh" },
-    { resource: "water", title: "Eau · SONEDE", unit: "m³" },
+    { resource: "electricity", title: L("Électricité · STEG", "Electricity · STEG", "الضو · STEG"), unit: "kWh" },
+    { resource: "water", title: L("Eau · SONEDE", "Water · SONEDE", "الماء · SONEDE"), unit: "m³" },
   ];
 
   const numInput = "w-full min-h-10 rounded-[8px] border border-control/60 bg-surface px-2 font-mono text-[13px] text-ink tabular-nums focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25";
@@ -338,14 +350,14 @@ function TariffCard({ isAdmin }: { isAdmin: boolean }) {
   return (
     <Card id="tarifs" className="scroll-mt-24">
       <CardHeader
-        title="Grille tarifaire"
+        title={L("Grille tarifaire", "Tariff grid", "جدول الأسوام")}
         aside={
           isAdmin && !editing && tariffs.data ? (
             <Button variant="secondary" onClick={() => setDraft(structuredClone(tariffs.data!))}>
               Modifier
             </Button>
           ) : !isAdmin ? (
-            <Pill tone="neutral">lecture seule</Pill>
+            <Pill tone="neutral">{L("lecture seule", "read only", "قراءة برك")}</Pill>
           ) : undefined
         }
       />
@@ -362,10 +374,10 @@ function TariffCard({ isAdmin }: { isAdmin: boolean }) {
               <div key={g.resource}>
                 <Label className="mb-2">{g.title}</Label>
                 {rows.length === 0 && !editing ? (
-                  <p className="t-small text-mute">Pas encore de grille. Les montants en DT de l'eau s'activeront dès qu'elle sera saisie.</p>
+                  <p className="t-small text-mute">{L("Pas encore de grille. Les montants en DT de l'eau s'activeront dès qu'elle sera saisie.", "No grid yet. Water DT amounts will turn on once it is entered.", "ما فماش جدول لتوّا. مبالغ الماء تتفعّل كيف يتدخّل.")}</p>
                 ) : (
                   <div className="-mx-1 overflow-x-auto">
-                    <table className="w-full min-w-[460px] border-separate border-spacing-1 text-left">
+                    <table className="w-full min-w-[460px] border-separate border-spacing-1 text-start">
                       <thead>
                         <tr className="t-label text-mute">
                           <th className="font-medium">De ({g.unit})</th>
@@ -393,7 +405,7 @@ function TariffCard({ isAdmin }: { isAdmin: boolean }) {
                             ) : (
                               <>
                                 <td className="border-t border-hairline py-2">{num(t.min_qty)}</td>
-                                <td className="border-t border-hairline py-2">{t.max_qty == null ? "et plus" : num(t.max_qty)}</td>
+                                <td className="border-t border-hairline py-2">{t.max_qty == null ? L("et plus", "and more", "وأكثر") : num(t.max_qty)}</td>
                                 <td className="border-t border-hairline py-2">{num(t.price_millimes)}</td>
                                 <td className="border-t border-hairline py-2">{num(t.vat_rate * 100)} %</td>
                               </>
@@ -414,7 +426,7 @@ function TariffCard({ isAdmin }: { isAdmin: boolean }) {
           })}
 
           <div>
-            <Label className="mb-2">Redevances et taxes</Label>
+            <Label className="mb-2">{L("Redevances et taxes", "Fees and taxes", "المعاليم والأداءات")}</Label>
             <ul className="divide-y divide-hairline">
               {data.fees.map((f, i) => (
                 <li key={f.key} className="flex items-center justify-between gap-4 py-2">
@@ -435,7 +447,7 @@ function TariffCard({ isAdmin }: { isAdmin: boolean }) {
           {editing && (
             <div className="flex flex-wrap items-center gap-3">
               <Button onClick={save} disabled={saver.busy}>
-                {saver.busy ? "Enregistrement…" : "Enregistrer la grille"}
+                {saver.busy ? L("Enregistrement…", "Saving…", "قاعد يسجّل…") : L("Enregistrer la grille", "Save the grid", "سجّل الجدول")}
               </Button>
               <Button variant="secondary" onClick={() => setDraft(null)}>
                 Annuler
@@ -454,7 +466,7 @@ function TariffCard({ isAdmin }: { isAdmin: boolean }) {
 
 export function SettingsPage() {
   const { settings, dashboard } = useData();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { choice, setChoice } = useTheme();
   const { hash } = useLocation();
   const s = settings.data;
@@ -470,10 +482,10 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader label={s ? s.name : "Mon foyer"} title="Réglages" />
+      <PageHeader back="/profil" label={s ? s.name : L("Mon foyer", "My home", "داري")} title={L("Paramètres", "Settings", "الإعدادات")} />
       {!s ? (
         settings.error ? (
-          <Banner tone="broken" title="Impossible de charger les réglages">{settings.error}</Banner>
+          <Banner tone="broken" title={L("Impossible de charger les réglages", "Could not load the settings", "ما نجّمناش نحمّلو الإعدادات")}>{settings.error}</Banner>
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Skeleton className="h-72" />
@@ -491,26 +503,19 @@ export function SettingsPage() {
             {s.demo_mode && <DemoCard onDone={() => void dashboard.refresh()} />}
             <DevicesCard s={s} onSaved={onSaved} />
             <Card>
-              <CardHeader title="Apparence" />
+              <CardHeader title={L("Apparence", "Appearance", "المظهر")} />
               <Segmented<ThemeChoice>
-                label="Thème"
+                label={L("Thème", "Theme", "الثيم")}
                 value={choice}
                 onChange={setChoice}
                 options={[
-                  { value: "system", label: "Système", icon: <Monitor size={16} strokeWidth={1.5} /> },
-                  { value: "light", label: "Clair", icon: <Sun size={16} strokeWidth={1.5} /> },
-                  { value: "dark", label: "Sombre", icon: <Moon size={16} strokeWidth={1.5} /> },
+                  { value: "system", label: L("Système", "System", "النظام"), icon: <Monitor size={16} strokeWidth={1.5} /> },
+                  { value: "light", label: L("Clair", "Light", "فاتح"), icon: <Sun size={16} strokeWidth={1.5} /> },
+                  { value: "dark", label: L("Sombre", "Dark", "غامق"), icon: <Moon size={16} strokeWidth={1.5} /> },
                 ]}
               />
             </Card>
-            <Card>
-              <CardHeader title="Compte" />
-              <p className="t-body text-ink">{user?.email}</p>
-              <p className="mt-0.5 font-mono text-[12px] text-mute">{user?.role === "admin" ? "administrateur · peut modifier la grille" : "foyer"}</p>
-              <Button variant="secondary" className="mt-5" onClick={logout}>
-                <LogOut size={18} strokeWidth={1.5} aria-hidden /> Se déconnecter
-              </Button>
-            </Card>
+            <AccountSettings />
           </div>
         </div>
       )}

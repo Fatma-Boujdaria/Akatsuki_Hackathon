@@ -23,6 +23,10 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 login_limiter = RateLimiter(get_settings().login_rate_limit_per_min)
 ingest_limiter = RateLimiter(get_settings().ingest_rate_limit_per_min)
+# Sign-up, codes, password reset: per IP and per email address.
+sensitive_limiter = RateLimiter(10)
+email_limiter = RateLimiter(get_settings().email_rate_limit_per_hour, window_s=3600)
+assistant_limiter = RateLimiter(20)
 
 
 def _unauthorized(detail: str = "Connexion requise") -> HTTPException:
@@ -43,6 +47,11 @@ def current_user(
     user = db.get(User, user_id)
     if user is None:
         raise _unauthorized("Compte introuvable")
+    # A password change or "log out everywhere" bumps token_version: older tokens die.
+    if int(payload.get("ver", 0)) != (user.token_version or 0):
+        raise _unauthorized("Session expirée, reconnecte-toi")
+    if user.status == "suspended":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Compte suspendu. Contacte le support.")
     return user
 
 
@@ -52,8 +61,30 @@ def require_admin(user: User = Depends(current_user)) -> User:
     return user
 
 
-def current_household(user: User = Depends(current_user), db: Session = Depends(get_db)) -> Household:
-    """The user's home. v1 has one household per account (PRD, out of scope)."""
+def owned_household(db: Session, user: User, household_id: uuid.UUID) -> Household:
+    """A household of this user, or 404 (another user's home is never revealed)."""
+    household = db.get(Household, household_id)
+    if household is None or household.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Foyer introuvable")
+    return household
+
+
+def current_household(
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+    x_household_id: str | None = Header(default=None, alias="X-Household-Id"),
+) -> Household:
+    """The home the app is looking at: the X-Household-Id header, else the first one.
+
+    An account can manage several homes; every household endpoint only ever
+    sees the one chosen here, and only if it belongs to the caller.
+    """
+    if x_household_id:
+        try:
+            wanted = uuid.UUID(x_household_id)
+        except ValueError:
+            raise HTTPException(422, "X-Household-Id invalide") from None
+        return owned_household(db, user, wanted)
     household = db.scalar(
         select(Household).where(Household.user_id == user.id).order_by(Household.created_at).limit(1)
     )

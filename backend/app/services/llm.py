@@ -54,6 +54,59 @@ def _get_client():
     return _client
 
 
+CHAT_LANG = {"fr": "en français, en tutoyant", "en": "in English", "ar": "بالدارجة التونسية (Tunisian Arabic, Arabic script)"}
+
+CHAT_SYSTEM = (
+    "You are the Tranche Guard assistant for a Tunisian household. Answer the user's question {lang}, "
+    "friendly and short (max 6 sentences). Use ONLY the facts and the draft answer given: never invent a "
+    "number, never add a number that is not already in them, keep every amount labelled as an estimate. "
+    "Always say which figures are measured and which are forecasts. A whole-house meter cannot measure one "
+    "appliance: appliance figures come from the household's declared profile, say so if you mention them."
+)
+
+CHAT_SCHEMA = {
+    "type": "object",
+    "properties": {"answer": {"type": "string"}},
+    "required": ["answer"],
+    "additionalProperties": False,
+}
+
+
+def chat_rewrite(question: str, draft: str, facts: list[dict], language: str) -> str | None:
+    """Conversational version of the template answer, or None (LLM off, failed or added a number)."""
+    settings = get_settings()
+    if not settings.llm_api_key or not draft:
+        return None
+    try:
+        response = _get_client().beta.messages.create(
+            model=settings.llm_model,
+            max_tokens=1200,
+            betas=["server-side-fallback-2026-07-01"],
+            fallbacks="default",
+            output_config={"effort": "low", "format": {"type": "json_schema", "schema": CHAT_SCHEMA}},
+            system=CHAT_SYSTEM.format(lang=CHAT_LANG.get(language, CHAT_LANG["fr"])),
+            messages=[
+                {
+                    "role": "user",
+                    "content": json.dumps({"question": question, "facts": facts, "draft_answer": draft}, ensure_ascii=False),
+                }
+            ],
+        )
+        if response.stop_reason != "end_turn":
+            return None
+        text = next(block.text for block in response.content if block.type == "text")
+        answer = json.loads(text)["answer"].strip()
+    except Exception as exc:  # the template answer is always fine
+        log.warning("LLM chat unavailable (%s), using the template answer", type(exc).__name__)
+        return None
+    allowed = numbers_in(draft) + numbers_in(question) + numbers_in(json.dumps(facts, ensure_ascii=False))
+    used = numbers_in(answer)
+    if not answer or any(n not in allowed for n in used):
+        log.info("LLM chat answer dropped: it contained a number not in the facts")
+        return None
+    return answer
+
+
 def reword_tips(texts: list[str]) -> list[str | None] | None:
     """Reworded texts (None where the check failed), or None if the LLM is off/failed."""
     settings = get_settings()

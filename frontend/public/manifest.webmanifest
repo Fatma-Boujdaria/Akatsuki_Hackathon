@@ -1,0 +1,10 @@
+{
+  "name": "Tranche Guard",
+  "short_name": "Tranche Guard",
+  "description": "Électricité et eau de ton foyer, facture STEG et SONEDE estimée, alertes avant la tranche suivante.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D1820",
+  "theme_color": "#0D1820",
+  "icons": [{ "src": "/app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

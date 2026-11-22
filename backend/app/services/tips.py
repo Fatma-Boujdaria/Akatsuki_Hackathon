@@ -8,6 +8,13 @@
 | appliance  | a heavy consumer starts often (7 days)  | bill(forecast) - bill(forecast - 1 h/day)   |
 | standby    | permanent load >= 30 W over 24 h         | bill(forecast) - bill(forecast - half)      |
 | offpeak    | always                                  | 0 DT: helps the grid, not the bill (said)   |
+| ac         | an air conditioner in the profile       | 20 % of its profile kWh (assumption, said)  |
+| water_heater | an electric water heater in the profile | 15 % of its profile kWh (assumption)      |
+| lighting   | lighting declared above 20 W per bulb   | LED at 9 W instead (profile)                |
+
+The last three come from the appliance profile the household declared: the
+kWh are an assumption on that profile, the DT always come from the tariff module.
+Each tip also stores its numbers in `params` so the app can translate it.
 
 A batch of tips is stored in the tips table (one created_at per batch) and
 reused for 60 s, so polling the endpoint does not recompute every time.
@@ -21,10 +28,14 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.models import Alert, Household, Reading, Tip
+from app.services import appliances as profile
 from app.services import consumption, fmt, llm
 from app.services import tariff as tariff_engine
 
-PRIORITY = ["threshold", "keep_pace", "leak", "appliance", "standby", "offpeak"]
+PRIORITY = ["threshold", "keep_pace", "leak", "ac", "water_heater", "appliance", "standby", "lighting", "offpeak"]
+AC_SAVING_SHARE = 0.20  # 22 -> 26 degrees: about a fifth less (order of magnitude, labelled)
+HEATER_SAVING_SHARE = 0.15  # thermostat 60 -> 50 degrees and a timer
+LED_W = 9
 STANDBY_MIN_W = 30
 KEEP_TIPS_DAYS = 7
 
@@ -34,6 +45,7 @@ class TipDraft:
     code: str
     text: str
     saving_dt: float | None
+    params: dict | None = None
 
 
 def standby_watts(db: Session, device_ids: list[str], now: datetime) -> float | None:
@@ -94,6 +106,7 @@ def build_tips(db: Session, household: Household, now: datetime) -> list[TipDraf
                     f"d'ici la fin du mois (≈ {fmt.num(cut / days_left, 1)} kWh par jour). "
                     f"Économie estimée : {fmt.dt(saving)}.",
                     saving,
+                    {"threshold": threshold, "cut_kwh": round(cut, 1), "per_day_kwh": round(cut / days_left, 1)},
                 )
             )
         elif threshold is not None:
@@ -105,6 +118,7 @@ def build_tips(db: Session, household: Household, now: datetime) -> list[TipDraf
                     f"(prévision {fmt.kwh(forecast)}). Garde ce rythme pour éviter "
                     f"{fmt.dt(avoided)} de surcoût.",
                     avoided,
+                    {"threshold": threshold, "forecast_kwh": round(forecast, 1)},
                 )
             )
 
@@ -129,7 +143,7 @@ def build_tips(db: Session, household: Household, now: datetime) -> list[TipDraf
         )
         if saving:
             text += f" Économie estimée : {fmt.dt(saving)} d'ici la fin du mois."
-        drafts.append(TipDraft("leak", text, saving))
+        drafts.append(TipDraft("leak", text, saving, {"litres_day": round(litres_day)}))
 
     if tariff is not None and forecast is not None:
         appliance = top_appliance(db, device_ids, now)
@@ -144,6 +158,7 @@ def build_tips(db: Session, household: Household, now: datetime) -> list[TipDraf
                     f"L'utiliser 1 h de moins par jour économise ≈ {fmt.kwh(save_kwh)}, "
                     f"soit {fmt.dt(saving)} d'ici la fin du mois.",
                     saving,
+                    {"kw": round(step_w / 1000, 1), "label": label, "save_kwh": round(save_kwh, 1)},
                 )
             )
 
@@ -158,8 +173,12 @@ def build_tips(db: Session, household: Household, now: datetime) -> list[TipDraf
                     f"Débranche box, TV et chargeurs la nuit : diviser cette veille par deux "
                     f"économise ≈ {fmt.kwh(save_kwh)}, soit {fmt.dt(saving)} d'ici la fin du mois.",
                     saving,
+                    {"base_w": round(base_w), "save_kwh": round(save_kwh, 1)},
                 )
             )
+
+    if tariff is not None:
+        drafts += profile_tips(db, household, tariff, kva, forecast, elec.usage.month_qty, days_left)
 
     if elec.usage.month_qty > 0 or forecast is not None:
         drafts.append(
@@ -170,6 +189,71 @@ def build_tips(db: Session, household: Household, now: datetime) -> list[TipDraf
                 0.0,
             )
         )
+    return drafts
+
+
+def profile_tips(
+    db: Session,
+    household: Household,
+    tariff: tariff_engine.Tariff,
+    kva: float,
+    forecast: float | None,
+    month_kwh: float,
+    days_left: float,
+) -> list[TipDraft]:
+    """Tips for the appliances the household declared (estimates on the profile)."""
+    items = profile.estimates(db, household)
+    if not items:
+        return []
+    base = forecast if forecast is not None else month_kwh
+    share_left = days_left / profile.DAYS_PER_MONTH
+    drafts: list[TipDraft] = []
+
+    ac = profile.by_category(items, "air_conditioner")
+    if ac:
+        save_kwh = sum(e.kwh_month for e in ac) * AC_SAVING_SHARE * share_left
+        if save_kwh >= 0.5:
+            saving = tariff_engine.saving_dt(tariff, kva, base, base - save_kwh)
+            drafts.append(
+                TipDraft(
+                    "ac",
+                    f"Règle ta clim à 26 °C plutôt qu'à 22 °C : tu restes au frais et, d'après ton profil, "
+                    f"tu économises ≈ {fmt.kwh(save_kwh)}, soit {fmt.dt(saving)} d'ici la fin du mois.",
+                    saving,
+                    {"save_kwh": round(save_kwh, 1), "pct": round(AC_SAVING_SHARE * 100)},
+                )
+            )
+
+    heater = profile.by_category(items, "water_heater")
+    if heater:
+        save_kwh = sum(e.kwh_month for e in heater) * HEATER_SAVING_SHARE * share_left
+        if save_kwh >= 0.5:
+            saving = tariff_engine.saving_dt(tariff, kva, base, base - save_kwh)
+            drafts.append(
+                TipDraft(
+                    "water_heater",
+                    f"Baisse le thermostat du chauffe-eau à 50 °C et mets-le sur minuterie : d'après ton profil, "
+                    f"≈ {fmt.kwh(save_kwh)} de moins, soit {fmt.dt(saving)} d'ici la fin du mois.",
+                    saving,
+                    {"save_kwh": round(save_kwh, 1), "pct": round(HEATER_SAVING_SHARE * 100)},
+                )
+            )
+
+    lights = [e for e in profile.by_category(items, "lighting") if e.power_w > 20]
+    if lights:
+        save_kwh = sum(e.kwh_month * (1 - LED_W / e.power_w) for e in lights) * share_left
+        bulbs = sum(e.appliance.quantity for e in lights)
+        if save_kwh >= 0.5:
+            saving = tariff_engine.saving_dt(tariff, kva, base, base - save_kwh)
+            drafts.append(
+                TipDraft(
+                    "lighting",
+                    f"Remplace tes {bulbs} ampoules classiques par des LED de {LED_W} W : "
+                    f"≈ {fmt.kwh(save_kwh)} de moins, soit {fmt.dt(saving)} d'ici la fin du mois.",
+                    saving,
+                    {"bulbs": bulbs, "led_w": LED_W, "save_kwh": round(save_kwh, 1)},
+                )
+            )
     return drafts
 
 
@@ -199,6 +283,7 @@ def refresh_tips(
                 code=draft.code,
                 text=new_text or draft.text,
                 saving_dt=draft.saving_dt,
+                params=draft.params,
                 source="llm" if new_text else "rule",
                 created_at=now,
             )

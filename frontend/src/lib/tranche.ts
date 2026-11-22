@@ -1,4 +1,5 @@
 import type { ElectricitySummary } from "./types";
+import { L } from "./i18n";
 import { daysInMonth, fractionalDay, localParts } from "./time";
 
 export type TrancheState = "safe" | "near" | "crossed" | "top" | "none";
@@ -26,7 +27,7 @@ export interface TrancheView {
 }
 
 function bandLabel(lo: number, hi: number | null): string {
-  if (hi == null) return `plus de ${Math.round(lo)} kWh`;
+  if (hi == null) return `${L("plus de", "over", "أكثر من")} ${Math.round(lo)} kWh`;
   return `${Math.round(lo) + (lo > 0 ? 1 : 0)}–${Math.round(hi)} kWh`;
 }
 

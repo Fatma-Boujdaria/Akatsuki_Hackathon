@@ -1,12 +1,17 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { AuthProvider, useAuth } from "./lib/auth";
-import { DataProvider, useData } from "./lib/data";
+import { DataProvider } from "./lib/data";
 import { ThemeProvider } from "./lib/theme";
+import { I18nProvider, LangRemount } from "./lib/i18n";
+import { HouseholdsProvider, useHouseholds } from "./lib/households";
+import { VirtualEspProvider } from "./lib/virtualEsp";
 import { Layout } from "./components/Layout";
-import { Logo, LogoMark } from "./components/Logo";
-import { Button, Card } from "./components/ui";
+import { LoadingScreen } from "./components/LoadingScreen";
 import { LoginPage } from "./pages/Login";
+import { RegisterPage } from "./pages/Register";
+import { ForgotPasswordPage } from "./pages/ForgotPassword";
+import { OnboardingPage } from "./pages/Onboarding";
 import { HomePage } from "./pages/Home";
 import { ElectricityPage } from "./pages/Electricity";
 import { WaterPage } from "./pages/Water";
@@ -14,56 +19,44 @@ import { AlertsPage } from "./pages/Alerts";
 import { ChallengesPage } from "./pages/Challenges";
 import { SettingsPage } from "./pages/Settings";
 import { EspPanelPage } from "./pages/EspPanel";
-import { VirtualEspProvider } from "./lib/virtualEsp";
-import type { ReactNode } from "react";
+import { AssistantPage } from "./pages/Assistant";
+import { HistoryPage } from "./pages/History";
+import { HouseholdsPage } from "./pages/Households";
+import { HelpPage } from "./pages/Help";
+import { ProfilePage } from "./pages/Profile";
 
-function Splash() {
-  return (
-    <div className="grid min-h-dvh place-items-center bg-canvas" role="status" aria-label="Chargement">
-      <LogoMark size={56} state="loading" />
-    </div>
-  );
-}
-
-/** An account without a household (e.g. the admin created by the seed script). */
-function NoHousehold({ message }: { message: string }) {
-  const { user, logout } = useAuth();
-  return (
-    <div className="grid min-h-dvh place-items-center bg-canvas px-4">
-      <Card className="w-full max-w-md text-center">
-        <div className="flex justify-center">
-          <Logo size={32} />
-        </div>
-        <h1 className="t-h2 mt-6 text-ink">{message}</h1>
-        <p className="t-body mt-2 text-body">
-          {user?.role === "admin"
-            ? "Ce compte administrateur n'a pas de foyer. Connecte-toi avec le compte d'un foyer pour voir le tableau de bord."
-            : "Ton compte n'est lié à aucun foyer. Demande à l'administrateur de t'en créer un."}
-        </p>
-        <p className="mt-3 font-mono text-[12px] text-mute">{user?.email}</p>
-        <Button variant="secondary" className="mt-6" onClick={logout}>
-          <LogOut size={18} strokeWidth={1.5} aria-hidden /> Se déconnecter
-        </Button>
-      </Card>
-    </div>
-  );
-}
-
-function HouseholdGate({ children }: { children: ReactNode }) {
-  const { dashboard } = useData();
-  if (!dashboard.data && dashboard.errorStatus === 404) return <NoHousehold message={dashboard.error ?? "Aucun foyer"} />;
-  return <>{children}</>;
-}
+// The admin panel is only for administrators: loaded on demand.
+const AdminPage = lazy(() => import("./pages/admin/Admin").then((m) => ({ default: m.AdminPage })));
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, checking } = useAuth();
   const location = useLocation();
-  if (checking) return <Splash />;
-  if (!user) return <Navigate to="/connexion" replace state={{ from: location.pathname + location.hash }} />;
+  if (checking) return <LoadingScreen />;
+  if (!user) return <Navigate to="/connexion" replace state={{ from: location.pathname + location.search + location.hash }} />;
+  return <HouseholdsProvider>{children}</HouseholdsProvider>;
+}
+
+function RequireAdmin({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  if (user?.role !== "admin") return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+/**
+ * Household screens: wait for the list of homes; none yet -> first-time setup
+ * (an admin without a home goes to the admin panel). The data layer is keyed by
+ * the chosen home, so switching homes reloads every screen.
+ */
+function HouseholdScreens() {
+  const { user } = useAuth();
+  const { households, current, loading, error } = useHouseholds();
+  if (loading) return <LoadingScreen />;
+  if (error && !households.length) return <LoadingScreen message={error} />;
+  if (!households.length) return <Navigate to={user?.role === "admin" ? "/admin" : "/bienvenue"} replace />;
   return (
-    <DataProvider>
+    <DataProvider key={current?.id ?? "none"}>
       <VirtualEspProvider>
-        <HouseholdGate>{children}</HouseholdGate>
+        <Layout />
       </VirtualEspProvider>
     </DataProvider>
   );
@@ -72,29 +65,60 @@ function RequireAuth({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/connexion" element={<LoginPage />} />
-            <Route
-              element={
-                <RequireAuth>
-                  <Layout />
-                </RequireAuth>
-              }
-            >
-              <Route index element={<HomePage />} />
-              <Route path="electricite" element={<ElectricityPage />} />
-              <Route path="eau" element={<WaterPage />} />
-              <Route path="alertes" element={<AlertsPage />} />
-              <Route path="defis" element={<ChallengesPage />} />
-              <Route path="reglages" element={<SettingsPage />} />
-              <Route path="esp" element={<EspPanelPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+      <I18nProvider>
+        <AuthProvider>
+          <LangRemount>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/connexion" element={<LoginPage />} />
+                <Route path="/inscription" element={<RegisterPage />} />
+                <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
+                <Route
+                  path="/bienvenue"
+                  element={
+                    <RequireAuth>
+                      <OnboardingPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/admin/*"
+                  element={
+                    <RequireAuth>
+                      <RequireAdmin>
+                        <Suspense fallback={<LoadingScreen />}>
+                          <AdminPage />
+                        </Suspense>
+                      </RequireAdmin>
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  element={
+                    <RequireAuth>
+                      <HouseholdScreens />
+                    </RequireAuth>
+                  }
+                >
+                  <Route index element={<HomePage />} />
+                  <Route path="electricite" element={<ElectricityPage />} />
+                  <Route path="eau" element={<WaterPage />} />
+                  <Route path="assistant" element={<AssistantPage />} />
+                  <Route path="alertes" element={<AlertsPage />} />
+                  <Route path="historique" element={<HistoryPage />} />
+                  <Route path="defis" element={<ChallengesPage />} />
+                  <Route path="foyers" element={<HouseholdsPage />} />
+                  <Route path="reglages" element={<SettingsPage />} />
+                  <Route path="aide" element={<HelpPage />} />
+                  <Route path="profil" element={<ProfilePage />} />
+                  <Route path="esp" element={<EspPanelPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Route>
+              </Routes>
+            </BrowserRouter>
+          </LangRemount>
+        </AuthProvider>
+      </I18nProvider>
     </ThemeProvider>
   );
 }

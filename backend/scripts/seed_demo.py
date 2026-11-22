@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session
 from app import clock
 from app.config import get_settings
 from app.db import Base, SessionLocal, get_engine
-from app.models import Alert, BadgeEarned, Device, Household, Reading, Score, TariffTranche, Tip, User
+from app.models import Alert, Appliance, BadgeEarned, Device, Household, Reading, Score, TariffTranche, Tip, User
 from app.security import generate_api_key, hash_api_key, hash_password
 from app.services import tariff as tariff_engine
 
@@ -139,6 +139,36 @@ def backfill_history(db: Session, household: Household, device_id: str, target_r
     return len(rows)
 
 
+DEMO_APPLIANCES = [
+    # category, name, quantity, power W (None = typical), hours a day (None = typical)
+    ("air_conditioner", "Climatiseur salon", 1, 1300, 5),
+    ("water_heater", "Chauffe-eau électrique", 1, 2000, 1.5),
+    ("refrigerator", "Réfrigérateur", 1, None, None),
+    ("washing_machine", "Machine à laver", 1, None, None),
+    ("television", "Télévision", 1, None, None),
+    ("lighting", "Ampoules classiques", 8, 60, 4),
+    ("router", "Box internet", 1, None, None),
+]
+
+
+def ensure_appliances(db: Session, household: Household) -> None:
+    """A realistic appliance profile for the demo home (only if it has none)."""
+    if db.scalar(select(Appliance.id).where(Appliance.household_id == household.id).limit(1)) is not None:
+        return
+    for category, name, qty, power, hours in DEMO_APPLIANCES:
+        db.add(
+            Appliance(
+                household_id=household.id,
+                category=category,
+                name=name,
+                quantity=qty,
+                power_w=power,
+                hours_per_day=hours,
+            )
+        )
+    print(f"  appliances: {len(DEMO_APPLIANCES)} added to the demo profile")
+
+
 def reset_demo_data(db: Session, household: Household) -> None:
     device_ids = list(db.scalars(select(Device.id).where(Device.household_id == household.id)))
     if device_ids:
@@ -155,6 +185,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--admin-email", help="also create an admin account (can edit tariffs)")
     parser.add_argument("--admin-password")
     parser.add_argument("--household-name", default="Maison démo")
+    parser.add_argument("--full-name", default="Amine", help="name shown in the greeting")
     parser.add_argument("--kva", type=float, default=6.0)
     parser.add_argument("--no-history", action="store_true", help="do not backfill this month's readings")
     parser.add_argument("--target-ratio", type=float, default=0.75, help="forecast / first threshold")
@@ -196,6 +227,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  device {ESP32_DEVICE_ID} (esp32): existing")
         if household.active_device_id is None:
             household.active_device_id = SIM_DEVICE_ID
+        if not user.full_name:
+            user.full_name = args.full_name
+        ensure_appliances(db, household)
 
         has_readings = db.scalar(select(Reading.id).where(Reading.device_id == SIM_DEVICE_ID).limit(1))
         if not args.no_history and has_readings is None:
