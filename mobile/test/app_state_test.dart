@@ -78,6 +78,13 @@ void main() {
     expect(app.freshAlertSeq, 1);
     expect(app.dashboard?.householdId, 'h2');
     expect(seenHomes.last, 'h2');
+
+    // Logging out leaves nothing for the next account (a setup in progress, announced alerts).
+    app.setOnboarding(true);
     app.logout();
+    expect(app.onboarding, isFalse);
+    expect(app.freshAlert, isNull);
+    expect(app.households, isEmpty);
+    expect(app.householdsLoaded, isFalse);
   });
 }

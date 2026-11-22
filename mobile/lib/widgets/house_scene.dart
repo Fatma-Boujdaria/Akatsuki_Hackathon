@@ -46,7 +46,17 @@ class HouseScene extends StatefulWidget {
 }
 
 class _HouseSceneState extends State<HouseScene> with SingleTickerProviderStateMixin {
-  late final AnimationController _flow = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat();
+  late final AnimationController _flow = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+
+  /// The lines only move while something flows: no 60 fps repaint (and battery) for a
+  /// still picture.
+  void _syncFlow(bool moving) {
+    if (moving && !_flow.isAnimating) {
+      _flow.repeat();
+    } else if (!moving && _flow.isAnimating) {
+      _flow.stop();
+    }
+  }
 
   @override
   void dispose() {
@@ -63,6 +73,7 @@ class _HouseSceneState extends State<HouseScene> with SingleTickerProviderStateM
     final waterOn = !widget.stale && (widget.flowLMin ?? 0) > 0;
     final dimElec = widget.focus == SceneFocus.water;
     final dimWater = widget.focus == SceneFocus.electricity;
+    _syncFlow(!reduce && (elecOn || waterOn));
     final top = widget.appliances.take(3).toList();
     final unreliable = L('peu fiable', 'unreliable', 'موش مضمون');
 

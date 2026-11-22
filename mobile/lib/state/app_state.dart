@@ -244,8 +244,20 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void logout() {
-    _stopPolling();
     api.token = null;
+    _prefs.remove('token');
+    _clearSession();
+  }
+
+  void _onUnauthorized() {
+    _prefs.remove('token');
+    _clearSession();
+  }
+
+  /// Nothing of this account may leak into the next one: data, homes, a setup in
+  /// progress, the alerts already announced.
+  void _clearSession() {
+    _stopPolling();
     user = null;
     dashboard = null;
     settings = null;
@@ -254,15 +266,9 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     dashboardErrorStatus = null;
     households = [];
     householdsLoaded = false;
-    _prefs.remove('token');
-    notifyListeners();
-  }
-
-  void _onUnauthorized() {
-    _prefs.remove('token');
-    _stopPolling();
-    user = null;
-    dashboard = null;
+    onboarding = false;
+    _seenAlertIds = null;
+    freshAlert = null;
     notifyListeners();
   }
 
@@ -281,7 +287,9 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
     // Also saved in the account; the phone keeps the choice if that fails.
     if (user != null) {
-      api.updateMe(language: l.name).then((u) => user = u).catchError((_) => user!);
+      api.updateMe(language: l.name).then((u) {
+        if (user != null) user = u; // not after a logout in the meantime
+      }, onError: (Object _) {});
     }
   }
 

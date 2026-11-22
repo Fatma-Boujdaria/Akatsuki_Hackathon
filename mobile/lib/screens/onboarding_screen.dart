@@ -44,7 +44,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _app.setOnboarding(true);
+      // Only the first-home setup shown by the gate needs the flag: a new home from
+      // "Mes foyers" is a pushed page, and a flag left on by a back gesture would trap
+      // the app on this screen.
+      if (!widget.resumeAppliances) _app.setOnboarding(true);
       _app.api.applianceCatalog().then((c) => mounted ? setState(() => _catalog = c) : null).catchError((_) => null);
       if (widget.resumeAppliances) {
         _app.api.appliances().then((list) => mounted ? setState(() => _items = [...list]) : null).catchError((_) => null);
