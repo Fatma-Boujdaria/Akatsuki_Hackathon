@@ -7,7 +7,7 @@ import 'package:tranche_guard/state/app_state.dart';
 import 'package:tranche_guard/theme.dart';
 import 'package:tranche_guard/util/i18n.dart';
 import 'package:tranche_guard/util/tranche.dart';
-import 'package:tranche_guard/widgets/hero_card.dart';
+import 'package:tranche_guard/screens/home_screen.dart';
 import 'package:tranche_guard/widgets/status.dart';
 import 'package:tranche_guard/widgets/ui.dart';
 
@@ -105,16 +105,17 @@ void main() {
     state.setLanguage(Lang.fr); // global language back to French for the next tests
   });
 
-  testWidgets('hero card: one number leads, every DT carries « estimation »', (tester) async {
+  testWidgets('tranche card: kWh left in Harissa when near, next kWh price, crossing cost as an estimate', (tester) async {
     final d = Dashboard.fromJson(dashboardJson());
     final v = TrancheView.from(d.electricity, now: d.generatedAt);
-    await tester.pumpWidget(wrap(HeroCard(data: d, view: v)));
+    await tester.pumpWidget(wrap(TrancheCard(view: v, d: d)));
     expect(v.state, TrancheState.near);
-    expect(find.text('9 kWh'), findsOneWidget);
-    expect(find.text('avant la tranche 201–300 kWh'), findsOneWidget);
-    expect(find.text('0,198 DT'), findsOneWidget);
-    expect(find.text('≈ 142 DT'), findsOneWidget);
-    expect(find.text('estimation'), findsOneWidget);
+    final title = tester.widget<Text>(find.byType(Text).first);
+    final spans = (title.textSpan! as TextSpan).children!.cast<TextSpan>();
+    expect(spans.map((s) => s.text).join().replaceAll('\u00a0', ' '), 'Encore 9 kWh avant la tranche suivante');
+    expect(spans.firstWhere((s) => (s.text ?? '').contains('kWh')).style?.color, TG.light.harissa);
+    expect(find.text('0,198\u00a0DT'), findsOneWidget);
+    expect(find.textContaining('(estimation)'), findsOneWidget);
   });
 
   testWidgets('a dead sensor shows "Capteur en panne", never a value', (tester) async {

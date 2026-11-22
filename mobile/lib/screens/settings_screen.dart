@@ -5,6 +5,8 @@ import '../api/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../util/format.dart';
+import '../util/i18n.dart';
+import '../widgets/account_settings.dart';
 import '../widgets/status.dart';
 import '../widgets/ui.dart';
 
@@ -18,65 +20,49 @@ class SettingsScreen extends StatelessWidget {
     final s = app.settings;
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: tg.canvas,
-        surfaceTintColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-        shape: Border(bottom: BorderSide(color: tg.hairline)),
-        iconTheme: IconThemeData(color: tg.ink),
-        title: Text('Réglages', style: T.h3(tg.ink).copyWith(fontSize: 18)),
-      ),
-      body: RefreshIndicator(
-        onRefresh: app.refreshSettings,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(kGutter, 20, kGutter, 40),
-          children: [
-            PageHeader(label: s?.name ?? 'Mon foyer', title: 'Réglages'),
-            if (s == null)
-              const Skeleton(height: 260)
-            else ...[
-              if (s.demoMode) ...[const _DemoCard(), const Gap(14)],
-              _HouseholdForm(key: ValueKey('h${s.name}${s.subscribedKva}${s.alertMarginKwh}'), s: s),
-              const Gap(14),
-              _LeakForm(key: ValueKey('l${s.leakStartHour}${s.leakEndHour}${s.leakMinMinutes}'), s: s),
-              const Gap(14),
-              _DevicesCard(s: s),
-            ],
-            const Gap(14),
-            TgCard(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                const CardTitle('Apparence'),
-                Segmented<ThemeMode>(
-                  value: app.themeMode,
-                  onChanged: app.setTheme,
-                  options: const [
-                    (ThemeMode.system, 'Système', LucideIcons300.monitor),
-                    (ThemeMode.light, 'Clair', LucideIcons300.sun),
-                    (ThemeMode.dark, 'Sombre', LucideIcons300.moon),
-                  ],
-                ),
-              ]),
-            ),
-            const Gap(14),
-            TgCard(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const CardTitle('Compte'),
-                Text(app.user?.email ?? '', style: T.body(tg.ink)),
-                Text(app.user?.isAdmin == true ? 'administrateur' : 'foyer', style: T.label(tg.mute).copyWith(letterSpacing: 0)),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Icon(LucideIcons300.server, size: 16, color: tg.mute),
-                  const SizedBox(width: 6),
-                  Expanded(child: Text(app.server, style: T.data(tg.body).copyWith(fontSize: 13))),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: app.refreshSettings,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(kGutter, 12, kGutter, 40),
+            children: [
+              PageHeader(back: true, label: s?.name ?? L('Mon foyer', 'My home', 'داري'), title: L('Paramètres', 'Settings', 'الإعدادات')),
+              if (s == null)
+                const Skeleton(height: 260)
+              else ...[
+                if (s.demoMode) ...[const _DemoCard(), const Gap(12)],
+                _HouseholdForm(key: ValueKey('h${s.name}${s.subscribedKva}${s.alertMarginKwh}'), s: s),
+                const Gap(12),
+                _LeakForm(key: ValueKey('l${s.leakStartHour}${s.leakEndHour}${s.leakMinMinutes}'), s: s),
+                const Gap(12),
+                _DevicesCard(s: s),
+              ],
+              const Gap(12),
+              TgCard(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  CardTitle(L('Apparence', 'Appearance', 'المظهر')),
+                  Segmented<ThemeMode>(
+                    value: app.themeMode,
+                    onChanged: app.setTheme,
+                    track: tg.sunken,
+                    options: [
+                      (ThemeMode.system, L('Système', 'System', 'النظام'), LucideIcons300.monitor),
+                      (ThemeMode.light, L('Clair', 'Light', 'فاتح'), LucideIcons300.sun),
+                      (ThemeMode.dark, L('Sombre', 'Dark', 'داكن'), LucideIcons300.moon),
+                    ],
+                  ),
                 ]),
-                const SizedBox(height: 16),
-                Btn('Se déconnecter', kind: BtnKind.secondary, icon: LucideIcons300.logOut, onPressed: () {
-                  Navigator.of(context).popUntil((r) => r.isFirst);
-                  app.logout();
-                }),
+              ),
+              const Gap(12),
+              const AccountSettings(),
+              const Gap(12),
+              Row(children: [
+                Icon(LucideIcons300.server, size: 16, color: tg.mute),
+                const SizedBox(width: 6),
+                Expanded(child: Text(app.server, textDirection: TextDirection.ltr, style: T.small(tg.mute))),
               ]),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -111,8 +97,8 @@ mixin _Saver<W extends StatefulWidget> on State<W> {
     return Padding(
       padding: const EdgeInsets.only(top: 18),
       child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 12, runSpacing: 8, children: [
-        Btn(busy ? 'Enregistrement…' : 'Enregistrer', onPressed: busy || !valid ? null : onSave),
-        if (saved && error == null) Text('Enregistré.', style: T.small(tg.primary)),
+        Btn(busy ? L('Enregistrement…', 'Saving…', 'قاعد يسجّل…') : L('Enregistrer', 'Save', 'سجّل'), onPressed: busy || !valid ? null : onSave),
+        if (saved && error == null) Text(L('Enregistré.', 'Saved.', 'تسجّل.'), style: T.small(tg.success)),
         if (error != null) Text(error!, style: T.small(tg.grenade)),
       ]),
     );
@@ -131,8 +117,8 @@ class _Field extends StatelessWidget {
   Widget build(BuildContext context) {
     final tg = context.tg;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: T.h3(tg.ink).copyWith(fontSize: 15)),
-      const SizedBox(height: 6),
+      Text(label, style: T.small(tg.body).copyWith(fontSize: 14, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 8),
       TextField(
         controller: controller,
         keyboardType: number ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
@@ -188,31 +174,31 @@ class _HouseholdFormState extends State<_HouseholdForm> with _Saver {
   Widget build(BuildContext context) {
     final kva = _kvaValue;
     final margin = _marginValue;
-    final kvaError = kva == null || kva <= 0 || kva > 100 ? 'Indique une puissance entre 1 et 100 kVA.' : null;
-    final marginError = margin == null || margin < 1 || margin > 50 ? 'Choisis une valeur entre 1 et 50.' : null;
-    final nameError = _name.text.trim().isEmpty ? 'Donne un nom à ton foyer.' : null;
+    final kvaError = kva == null || kva <= 0 || kva > 100 ? L('Indique une puissance entre 1 et 100 kVA.', 'Enter a power between 1 and 100 kVA.', 'اكتب قوة بين 1 و 100 kVA.') : null;
+    final marginError = margin == null || margin < 1 || margin > 50 ? L('Choisis une valeur entre 1 et 50.', 'Choose a value between 1 and 50.', 'اختار قيمة بين 1 و 50.') : null;
+    final nameError = _name.text.trim().isEmpty ? L('Donne un nom à ton foyer.', 'Give your home a name.', 'عطي اسم للدار متاعك.') : null;
 
     return TgCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const CardTitle('Foyer'),
-        _Field(label: 'Nom du foyer', controller: _name, error: nameError, onChanged: (_) => setState(() {})),
+        CardTitle(L('Foyer', 'Home', 'الدار')),
+        _Field(label: L('Nom du foyer', 'Home name', 'اسم الدار'), controller: _name, error: nameError, onChanged: (_) => setState(() {})),
         const SizedBox(height: 16),
         _Field(
-          label: 'Puissance souscrite (kVA)',
+          label: L('Puissance souscrite (kVA)', 'Subscribed power (kVA)', 'القوة المشترك فيها (kVA)'),
           controller: _kva,
           number: true,
           suffix: 'kVA',
-          help: 'Indiquée sur ta facture STEG.',
+          help: L('Indiquée sur ta facture STEG.', 'Shown on your STEG bill.', 'مكتوبة في فاتورة STEG.'),
           error: kvaError,
           onChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: 16),
         _Field(
-          label: 'Marge d\'alerte (kWh)',
+          label: L('Marge d\'alerte (kWh)', 'Alert margin (kWh)', 'هامش التنبيه (kWh)'),
           controller: _margin,
           number: true,
           suffix: 'kWh',
-          help: 'Choisis une valeur entre 1 et 50.',
+          help: L('Choisis une valeur entre 1 et 50.', 'Choose a value between 1 and 50.', 'اختار قيمة بين 1 و 50.'),
           error: _margin.text == '${widget.s.alertMarginKwh}' ? null : marginError,
           onChanged: (_) => setState(() {}),
         ),
@@ -246,8 +232,8 @@ class _LeakFormState extends State<_LeakForm> with _Saver {
   Widget _hour(String label, int value, ValueChanged<int> onChanged, {String? error}) {
     final tg = context.tg;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: T.h3(tg.ink).copyWith(fontSize: 15)),
-      const SizedBox(height: 6),
+      Text(label, style: T.small(tg.body).copyWith(fontSize: 14, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 8),
       DropdownButtonFormField<int>(
         initialValue: value,
         isExpanded: true,
@@ -270,19 +256,19 @@ class _LeakFormState extends State<_LeakForm> with _Saver {
   Widget build(BuildContext context) {
     final tg = context.tg;
     final minutes = int.tryParse(_minutes.text.trim());
-    final sameError = _start == _end ? 'Le début et la fin doivent être différents.' : null;
-    final minError = minutes == null || minutes < 1 || minutes > 720 ? 'Choisis une durée entre 1 et 720 minutes.' : null;
+    final sameError = _start == _end ? L('Le début et la fin doivent être différents.', 'Start and end must differ.', 'البداية والنهاية لازم يختلفو.') : null;
+    final minError = minutes == null || minutes < 1 || minutes > 720 ? L('Choisis une durée entre 1 et 720 minutes.', 'Choose a duration between 1 and 720 minutes.', 'اختار مدة بين 1 و 720 دقيقة.') : null;
 
     return TgCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const CardTitle('Surveillance des fuites'),
-        Text('La nuit, personne ne devrait utiliser d\'eau. Une eau qui coule sans arrêt dans cette fenêtre déclenche une alerte.',
+        CardTitle(L('Surveillance des fuites', 'Leak watch', 'مراقبة التسريب')),
+        Text(L('La nuit, personne ne devrait utiliser d\'eau. Une eau qui coule sans arrêt dans cette fenêtre déclenche une alerte.', 'At night nobody should use water. Water running non-stop in this window raises an alert.', 'في الليل حتى حد ما يستعمل الماء. ماء يجري بلا وقفة في الوقت هذا يعطي تنبيه.'),
             style: T.small(tg.mute)),
         const SizedBox(height: 16),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: _hour('Début', _start, (v) => setState(() => _start = v), error: sameError)),
+          Expanded(child: _hour(L('Début', 'Start', 'البداية'), _start, (v) => setState(() => _start = v), error: sameError)),
           const SizedBox(width: 12),
-          Expanded(child: _hour('Fin', _end, (v) => setState(() => _end = v))),
+          Expanded(child: _hour(L('Fin', 'End', 'النهاية'), _end, (v) => setState(() => _end = v))),
         ]),
         if (sameError != null) ...[
           const SizedBox(height: 6),
@@ -290,11 +276,11 @@ class _LeakFormState extends State<_LeakForm> with _Saver {
         ],
         const SizedBox(height: 16),
         _Field(
-          label: 'Durée avant l\'alerte (minutes)',
+          label: L('Durée avant l\'alerte (minutes)', 'Time before the alert (minutes)', 'المدة قبل التنبيه (دقايق)'),
           controller: _minutes,
           number: true,
           suffix: 'min',
-          help: '120 min par défaut. Pour la démo, mets 2 min.',
+          help: L('120 min par défaut. Pour la démo, mets 2 min.', '120 min by default. For the demo, use 2 min.', '120 دقيقة عادة. للديمو، حط 2 دقايق.'),
           error: _minutes.text == '${widget.s.leakMinMinutes}' ? null : minError,
           onChanged: (_) => setState(() {}),
         ),
@@ -323,16 +309,16 @@ class _DevicesCardState extends State<_DevicesCard> with _Saver {
       for (final d in s.devices)
         (
           d.id,
-          d.kind == 'simulator' ? 'Simulateur · ${d.id}' : 'Boîtier ESP32 · ${d.id}',
-          d.kind == 'simulator' ? 'Envoie le même JSON que la box' : 'PZEM-004T · YF-S201',
+          d.kind == 'simulator' ? '${L('Simulateur', 'Simulator', 'سيمولاتور')} · ${d.id}' : '${L('Boîtier ESP32', 'ESP32 box', 'بواطة ESP32')} · ${d.id}',
+          d.kind == 'simulator' ? L('Envoie le même JSON que la box', 'Sends the same JSON as the box', 'يبعث نفس JSON متاع البواطة') : 'PZEM-004T · YF-S201',
           d,
         ),
-      (null, 'Tous les appareils', 'Additionne les mesures de chaque appareil', null),
+      (null, L('Tous les appareils', 'All devices', 'البواطات الكل'), L('Additionne les mesures de chaque appareil', 'Adds up the readings of every device', 'يجمع القياسات متاع كل بواطة'), null),
     ];
 
     return TgCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const CardTitle('Appareil actif'),
+        CardTitle(L('Appareil actif', 'Active device', 'البواطة المستعملة')),
         for (final (id, title, sub, dev) in options)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -363,8 +349,8 @@ class _DevicesCardState extends State<_DevicesCard> with _Saver {
                         if (dev != null) ...[
                           const SizedBox(height: 6),
                           dev.online
-                              ? const Pill('En direct', tone: PillTone.live)
-                              : Pill(dev.lastSeenAt != null ? 'vu ${dateTime(dev.lastSeenAt!)}' : 'jamais vu',
+                              ? Pill(L('En direct', 'Live', 'مباشر'), tone: PillTone.success)
+                              : Pill(dev.lastSeenAt != null ? '${L('vu', 'seen', 'آخر مرة')} ${dateTime(dev.lastSeenAt!)}' : L('jamais vu', 'never seen', 'عمرو ما تشاف'),
                                   tone: PillTone.neutral, icon: const Icon(LucideIcons300.wifiOff)),
                         ],
                       ]),
@@ -415,19 +401,20 @@ class _DemoCardState extends State<_DemoCard> {
     return TgCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Expanded(child: Text('Contrôle démo', style: T.h3(tg.ink).copyWith(fontSize: 17))),
+          Expanded(child: Text(L('Contrôle démo', 'Demo control', 'التحكم في الديمو'), style: T.h3(tg.ink))),
           const Pill('DEMO_MODE', tone: PillTone.neutral),
         ]),
         const SizedBox(height: 10),
         Text(
-          'Ajoute un pic de +3,5 kW pendant 30 s au simulateur et assez de kWh pour entrer dans la marge d\'alerte. '
-          'L\'alerte de tranche et les conseils apparaissent en une dizaine de secondes.',
+          L('Ajoute un pic de +3,5 kW pendant 30 s au simulateur et assez de kWh pour entrer dans la marge d\'alerte. L\'alerte de tranche et les conseils apparaissent en une dizaine de secondes.',
+              'Adds a +3.5 kW spike for 30 s to the simulator and enough kWh to enter the alert margin. The tranche alert and tips show up within about ten seconds.',
+              'يزيد قفزة +3,5 kW مدة 30 ثانية للسيمولاتور وkWh كافية باش يدخل في هامش التنبيه. التنبيه والنصائح يظهرو في عشرة ثواني تقريبا.'),
           style: T.body(tg.body),
         ),
         const SizedBox(height: 16),
         Align(
           alignment: Alignment.centerLeft,
-          child: Btn(_busy ? 'Envoi…' : 'Simuler un pic', icon: LucideIcons300.zap, onPressed: _busy ? null : _spike),
+          child: Btn(_busy ? L('Envoi…', 'Sending…', 'قاعد يبعث…') : L('Simuler un pic', 'Simulate a spike', 'اعمل قفزة'), icon: LucideIcons300.zap, onPressed: _busy ? null : _spike),
         ),
         if (_result != null) ...[
           const SizedBox(height: 14),

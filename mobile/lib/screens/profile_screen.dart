@@ -8,6 +8,7 @@ import '../util/i18n.dart';
 import '../widgets/fields.dart';
 import '../widgets/ui.dart';
 import 'assistant_screen.dart';
+import 'help_screen.dart';
 import 'history_screen.dart';
 import 'households_screen.dart';
 import 'settings_screen.dart';
@@ -114,6 +115,11 @@ class ProfileScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Align(alignment: AlignmentDirectional.centerStart, child: LanguageSwitch()),
+          ),
+          ListRow(
+            icon: LucideIcons300.lifeBuoy,
+            label: L('Aide et support', 'Help and support', 'المساعدة'),
+            onTap: () => push(const HelpScreen()),
           ),
         ]),
         SectionLabel(L('Compte', 'Account', 'الحساب')),

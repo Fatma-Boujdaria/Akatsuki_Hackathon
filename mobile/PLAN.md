@@ -29,7 +29,7 @@ checked on the USB phone (SM A175F) with `adb reverse tcp:8000 tcp:8000`.
 - [x] 8. Alerts and tips (translated with params), notification history, in-app banner
       (alerts, tips and history done with slice 5)
       | verify: same list as the web; "tout marquer lu" clears the badge
-- [ ] 9. Appliances editor, Settings, Profile (name, language, password, logout everywhere,
+- [x] 9. Appliances editor, Settings, Profile (name, language, password, logout everywhere,
       delete account), Help and support (FAQ, contact form)
       | verify: add / edit / delete an appliance; send a support message; delete the test account
 - [ ] 10. Full walkthrough FR / EN / AR, light / dark, API stopped (error states); README update;
