@@ -59,9 +59,13 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   int? dashboardErrorStatus;
   DateTime? dashboardAt;
   Settings? settings;
+
+  /// Consumption status and the appliance shares of the profile (every 30 s).
+  Insights? insights;
   late Map<String, int> _snoozed;
 
   Timer? _timer;
+  Timer? _insightsTimer;
   bool _inFlight = false;
   bool _foreground = true;
 
@@ -179,6 +183,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     householdEpoch++;
     dashboard = null;
     settings = null;
+    insights = null;
     dashboardError = null;
     dashboardErrorStatus = null;
     notifyListeners();
@@ -210,6 +215,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     user = null;
     dashboard = null;
     settings = null;
+    insights = null;
     dashboardError = null;
     dashboardErrorStatus = null;
     households = [];
@@ -258,12 +264,16 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     if (!_foreground || user == null || api.householdId == null) return;
     refreshDashboard();
     refreshSettings();
+    refreshInsights();
     _timer = Timer.periodic(kDashboardPoll, (_) => refreshDashboard());
+    _insightsTimer = Timer.periodic(const Duration(seconds: 30), (_) => refreshInsights());
   }
 
   void _stopPolling() {
     _timer?.cancel();
     _timer = null;
+    _insightsTimer?.cancel();
+    _insightsTimer = null;
   }
 
   @override
@@ -311,6 +321,19 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
       notifyListeners();
     } catch (_) {
       // The settings screen shows its own error.
+    }
+  }
+
+  Future<void> refreshInsights() async {
+    if (user == null || api.householdId == null) return;
+    final epoch = householdEpoch;
+    try {
+      final i = await api.insights();
+      if (epoch != householdEpoch) return;
+      insights = i;
+      notifyListeners();
+    } catch (_) {
+      // Optional on the dashboard: the status badge is simply not shown.
     }
   }
 

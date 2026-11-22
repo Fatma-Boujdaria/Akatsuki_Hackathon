@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import '../api/models.dart';
 import 'format.dart';
+import 'i18n.dart';
 
 enum TrancheState { safe, near, crossed, top, none }
 
@@ -48,7 +49,7 @@ class TrancheView {
   final DateTime? crossingDate;
 
   static String _band(double lo, double? hi) {
-    if (hi == null) return 'plus de ${lo.round()} kWh';
+    if (hi == null) return '${L('plus de', 'over', 'أكثر من')} ${lo.round()} kWh';
     return '${lo.round() + (lo > 0 ? 1 : 0)}–${hi.round()} kWh';
   }
 

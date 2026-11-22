@@ -136,9 +136,22 @@ void main() {
     final v = TrancheView.from(d.electricity, now: d.generatedAt);
     final look = alertLook(d.activeAlerts.first, v);
     expect(look.tone, BannerTone.headsup);
-    expect(look.title, 'Tranche suivante bientôt');
+    expect(look.title, 'Tranche suivante en vue');
     await tester.pumpWidget(wrap(TgBanner(tone: look.tone, title: look.title, child: Text(d.activeAlerts.first.message)), tg: TG.dark));
-    final title = tester.widget<Text>(find.text('Tranche suivante bientôt'));
+    final title = tester.widget<Text>(find.text('Tranche suivante en vue'));
     expect(title.style?.color, TG.dark.harissa);
+
+    // With the numbers stored by the backend, the title names the threshold (as on the web).
+    final withParams = Alert.fromJson({
+      'id': 'a2', 'type': 'threshold', 'resource': 'electricity', 'severity': 'warning',
+      'message': 'Tranche bientôt', 'created_at': '2026-11-21T19:00:00Z',
+      'params': {'variant': 'near', 'threshold': 200, 'left': 9, 'unit': 'kWh', 'extra_dt': 4.2},
+    });
+    expect(alertTitle(withParams), 'Tranche 200 kWh dans 9 kWh');
+    setCurrentLang(Lang.en);
+    expect(alertTitle(withParams), '200 kWh tranche in 9 kWh');
+    expect(alertText(withParams), contains('left before the next tranche'));
+    setCurrentLang(Lang.fr);
+    expect(alertText(withParams), 'Tranche bientôt'); // French keeps the backend text
   });
 }

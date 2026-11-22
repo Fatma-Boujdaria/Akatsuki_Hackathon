@@ -18,7 +18,7 @@ checked on the USB phone (SM A175F) with `adb reverse tcp:8000 tcp:8000`.
       (home details, appliances, box or simulator), Homes screen (add, edit, delete)
       | verify: test account finishes onboarding; demo account switches between two homes
       | files: state/app_state.dart, screens/onboarding_screen.dart, screens/households_screen.dart, screens/shell.dart
-- [ ] 5. Shell + dashboard as on the web: new nav, top bar (home, bell, avatar), Accueil with
+- [x] 5. Shell + dashboard as on the web: new nav, top bar (home, bell, avatar), Accueil with
       insights and consumption status
       | verify: demo dashboard figures equal the web's for the same home
       | files: screens/shell.dart, screens/home_screen.dart, widgets/*
@@ -27,6 +27,7 @@ checked on the USB phone (SM A175F) with `adb reverse tcp:8000 tcp:8000`.
 - [ ] 7. Assistant chat
       | verify: "Combien vais-je payer ce mois-ci ?" answers with a DT amount
 - [ ] 8. Alerts and tips (translated with params), notification history, in-app banner
+      (alerts, tips and history done with slice 5; in-app banner left)
       | verify: same list as the web; "tout marquer lu" clears the badge
 - [ ] 9. Appliances editor, Settings, Profile (name, language, password, logout everywhere,
       delete account), Help and support (FAQ, contact form)
