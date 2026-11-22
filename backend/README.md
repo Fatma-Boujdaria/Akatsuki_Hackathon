@@ -63,7 +63,7 @@ Fill in:
 
 | Variable | Where to find it |
 |---|---|
-| `DATABASE_URL` | Supabase → project **Akatsuki_db** → **Connect** → *Session pooler* URI. Replace `[YOUR-PASSWORD]` with the database password. Leave empty to use a local SQLite file instead (no internet needed). |
+| `DATABASE_URL` | Supabase → project **Akatsuki_db** → **Connect** → *Transaction pooler* URI (port **6543**). Replace `[YOUR-PASSWORD]` with the database password. Leave empty to use a local SQLite file instead (no internet needed). |
 | `JWT_SECRET` | Any long random string: `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
 | `DEVICE_API_KEY` | Another random string. Key of the simulator device `sim-001`. |
 | `LLM_API_KEY` | Optional. Anthropic API key to reword tips. Empty = template tips (works fine). |

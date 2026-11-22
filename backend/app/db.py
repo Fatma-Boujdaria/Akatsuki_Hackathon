@@ -4,16 +4,22 @@ The same code talks to Supabase PostgreSQL (demo and team) and to SQLite
 (automatic tests, quick local start). The ORM hides the differences.
 """
 
+import logging
 from collections.abc import Iterator
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Engine, create_engine, event
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.types import TypeDecorator
 
 from app.config import get_settings
 
 SQLITE_DEFAULT_URL = "sqlite:///./tranche_guard.db"
+SESSION_POOLER_PORT = 5432  # Supabase "Session pooler": max 15 clients for the WHOLE project
+TRANSACTION_POOLER_PORT = 6543  # Supabase "Transaction pooler": shares connections, ~200 clients
+
+log = logging.getLogger(__name__)
 
 
 def normalize_database_url(url: str) -> str:
@@ -31,6 +37,25 @@ def normalize_database_url(url: str) -> str:
     return url
 
 
+def use_transaction_pooler(url: str) -> str:
+    """Move a Supabase Session-pooler URL (port 5432) to the Transaction pooler (6543).
+
+    In session mode every open connection of every running backend holds one of
+    only 15 slots, and the next one fails with "EMAXCONNSESSION max clients
+    reached". The transaction pooler shares a few database connections between
+    many clients. It works with this code because prepared statements are off
+    (see make_engine) and nothing here relies on session state.
+    """
+    parsed = make_url(url)
+    if (parsed.host or "").endswith(".pooler.supabase.com") and (parsed.port or SESSION_POOLER_PORT) == SESSION_POOLER_PORT:
+        log.warning(
+            "DATABASE_URL uses Supabase's Session pooler (port 5432, max 15 connections for the whole team). "
+            "Using the Transaction pooler (port 6543) instead. Put :6543 in .env to make this explicit."
+        )
+        return parsed.set(port=TRANSACTION_POOLER_PORT).render_as_string(hide_password=False)
+    return url
+
+
 def make_engine(url: str) -> Engine:
     url = normalize_database_url(url)
     if url.startswith("sqlite"):
@@ -41,11 +66,13 @@ def make_engine(url: str) -> Engine:
             dbapi_conn.execute("PRAGMA foreign_keys=ON")
 
         return engine
+    settings = get_settings()
     return create_engine(
-        url,
+        use_transaction_pooler(url),
         pool_pre_ping=True,  # reconnect quietly if Supabase closed an idle connection
-        pool_size=5,
-        max_overflow=5,
+        pool_size=settings.db_pool_size,  # small on purpose: the team shares the pooler
+        max_overflow=settings.db_max_overflow,
+        pool_timeout=10,  # wait at most 10 s for a free connection, then fail clearly
         # Supabase poolers (PgBouncer/Supavisor in transaction mode) do not support
         # server-side prepared statements; disabling them works with every pooler.
         connect_args={"prepare_threshold": None},

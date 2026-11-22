@@ -6,7 +6,7 @@
 What it does:
 1. Generates JWT_SECRET and DEVICE_API_KEY (long random strings). If .env already
    exists, keeps its secrets, so device keys and logins stay valid.
-2. Builds DATABASE_URL for the Akatsuki_db Session pooler. The password is
+2. Builds DATABASE_URL for the Akatsuki_db Transaction pooler (port 6543). The password is
    URL-encoded, so characters like @ # / % in it do not break the URL.
 3. Connects to Supabase and checks the Tranche Guard tables are there.
 4. Writes .env (from .env.example, comments kept). .env is git-ignored.
@@ -41,17 +41,21 @@ def read_env(path: Path) -> dict[str, str]:
 
 
 def pooler_candidates(password: str) -> list[str]:
-    """Session pooler URLs to try (Supabase uses aws-0 or aws-1 depending on the project)."""
+    """Transaction pooler URLs to try (Supabase uses aws-0 or aws-1 depending on the project).
+
+    Port 6543 (transaction mode), not 5432 (session mode): session mode allows only
+    15 connections for the whole team and fails with "max clients reached".
+    """
     encoded = quote(password, safe="")
     return [
-        f"postgresql://postgres.{PROJECT_REF}:{encoded}@{host}-{REGION}.pooler.supabase.com:5432/postgres"
+        f"postgresql://postgres.{PROJECT_REF}:{encoded}@{host}-{REGION}.pooler.supabase.com:6543/postgres"
         for host in ("aws-0", "aws-1")
     ]
 
 
 def fill_password(pasted_url: str, password: str) -> str:
     """Put the URL-encoded password in the connection string copied from Supabase."""
-    pasted_url = pasted_url.strip()
+    pasted_url = pasted_url.strip().replace(".pooler.supabase.com:5432/", ".pooler.supabase.com:6543/")
     if PLACEHOLDER in pasted_url:
         return pasted_url.replace(PLACEHOLDER, quote(password, safe=""))
     return pasted_url  # the pasted URL already contains a password
@@ -104,8 +108,8 @@ def ask_database_url() -> str | None:
     if not password:
         print("   No password typed.")
         return None
-    print("\n2) Optional: paste the Session pooler connection string from Supabase")
-    print("   (project page > Connect > Session pooler). Press Enter to let the script find it.")
+    print("\n2) Optional: paste the Transaction pooler connection string from Supabase")
+    print("   (project page > Connect > Transaction pooler). Press Enter to let the script find it.")
     pasted = input("   Connection string: ").strip()
     candidates = [fill_password(pasted, password)] if pasted else pooler_candidates(password)
 

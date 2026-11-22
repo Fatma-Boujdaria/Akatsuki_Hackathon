@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     # Supabase gives "postgresql://..."; db.py converts it to the psycopg driver.
     # Empty -> local SQLite file, handy for a quick start without Supabase.
     database_url: str = ""
+    # Connections this backend keeps open. The whole team shares one Supabase
+    # pooler, so stay small: at most 3 + 2 = 5 per running backend.
+    db_pool_size: int = 3
+    db_max_overflow: int = 2
 
     # --- Security -----------------------------------------------------------
     jwt_secret: str = Field(min_length=32)  # required: the app refuses to start without it
