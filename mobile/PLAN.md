@@ -26,8 +26,8 @@ checked on the USB phone (SM A175F) with `adb reverse tcp:8000 tcp:8000`.
       | verify: screens load on phone, history bars match the web
 - [x] 7. Assistant chat
       | verify: "Combien vais-je payer ce mois-ci ?" answers with a DT amount
-- [ ] 8. Alerts and tips (translated with params), notification history, in-app banner
-      (alerts, tips and history done with slice 5; in-app banner left)
+- [x] 8. Alerts and tips (translated with params), notification history, in-app banner
+      (alerts, tips and history done with slice 5)
       | verify: same list as the web; "tout marquer lu" clears the badge
 - [ ] 9. Appliances editor, Settings, Profile (name, language, password, logout everywhere,
       delete account), Help and support (FAQ, contact form)

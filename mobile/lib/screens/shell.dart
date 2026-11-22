@@ -25,6 +25,46 @@ class Shell extends StatefulWidget {
 
 class ShellState extends State<Shell> {
   int _index = 0;
+  AppState? _app;
+  int _shownSeq = 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final app = AppScope.read(context);
+    if (!identical(app, _app)) {
+      _app?.removeListener(_onApp);
+      _app = app..addListener(_onApp);
+      _shownSeq = app.freshAlertSeq;
+    }
+  }
+
+  @override
+  void dispose() {
+    _app?.removeListener(_onApp);
+    super.dispose();
+  }
+
+  /// A new alert while the app is open: shown once, above the navigation.
+  void _onApp() {
+    final app = _app!;
+    if (app.freshAlertSeq == _shownSeq || app.freshAlert == null || !mounted) return;
+    _shownSeq = app.freshAlertSeq;
+    final a = app.freshAlert!;
+    final look = alertLook(a, app.tranche);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(SnackBar(
+      duration: const Duration(seconds: 8),
+      margin: EdgeInsets.fromLTRB(12, 0, 12, 96 + MediaQuery.paddingOf(context).bottom),
+      content: Row(children: [
+        Icon(look.icon, size: 18, color: context.tg.canvas),
+        const SizedBox(width: 10),
+        Expanded(child: Text(look.title)),
+      ]),
+      action: SnackBarAction(label: L('Voir', 'See', 'شوف'), onPressed: openAlerts),
+    ));
+  }
 
   /// Switch tab from inside a screen (e.g. "Voir l'eau" -> Eau).
   void go(int index) => setState(() => _index = index);

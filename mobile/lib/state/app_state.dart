@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:http/http.dart' as http;
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,12 +20,14 @@ const Duration kDashboardPoll = Duration(milliseconds: 2500);
 const Duration kSnooze = Duration(hours: 2); // "Plus tard" hides a banner for 2 h
 
 class AppState extends ChangeNotifier with WidgetsBindingObserver {
-  AppState(this._prefs) {
+  /// [client]: a fake HTTP client in tests.
+  AppState(this._prefs, {http.Client? client}) {
     api = Api(
       baseUrl: _prefs.getString('server') ?? kDefaultApiUrl,
       token: _prefs.getString('token'),
       householdId: _prefs.getString('household'),
       onUnauthorized: _onUnauthorized,
+      client: client,
     )..onHouseholdGone = () {
         _prefs.remove('household');
         refreshHouseholds();
@@ -102,6 +105,36 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
           margin: settings?.alertMarginKwh ?? 10, now: dashboard!.generatedAt);
 
   Set<String> get snoozed => _snoozed.keys.toSet();
+
+  // ---- In-app notifications -----------------------------------------------------------
+  // While the app is open, an alert that was not there at the previous poll is shown once
+  // as a banner (Shell listens to [freshAlertSeq]), if the user's preferences allow its type.
+
+  Set<String>? _seenAlertIds;
+  Alert? freshAlert;
+  int freshAlertSeq = 0;
+
+  void _noticeNewAlerts(Dashboard d) {
+    final ids = {for (final a in d.activeAlerts) a.id};
+    final seen = _seenAlertIds;
+    _seenAlertIds = ids;
+    if (seen == null) return; // first load of this home: nothing is "new"
+    final prefs = user?.notifyPrefs ?? NotifyPrefs();
+    for (final a in d.activeAlerts) {
+      if (seen.contains(a.id)) continue;
+      final wanted = switch (a.type) {
+        'threshold' => prefs.threshold,
+        'leak' => prefs.leak,
+        'device_offline' || 'sensor_fault' => prefs.device,
+        _ => true,
+      };
+      if (wanted) {
+        freshAlert = a;
+        freshAlertSeq++;
+        return;
+      }
+    }
+  }
 
   /// Check the saved session at start-up.
   Future<void> restore() async {
@@ -181,6 +214,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     api.householdId = id;
     _prefs.setString('household', id);
     householdEpoch++;
+    _seenAlertIds = null;
     dashboard = null;
     settings = null;
     insights = null;
@@ -294,6 +328,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final d = await api.dashboard();
       if (epoch != householdEpoch) return; // answer for the home shown before a switch
+      _noticeNewAlerts(d);
       dashboard = d;
       dashboardAt = DateTime.now();
       dashboardError = null;
