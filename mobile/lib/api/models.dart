@@ -7,11 +7,72 @@ double _d0(Object? v) => v == null ? 0 : (v as num).toDouble();
 DateTime? _dt(Object? v) => v == null ? null : DateTime.parse(v as String);
 List<T> _list<T>(Object? v, T Function(Json) f) => [for (final e in (v as List? ?? const [])) f(e as Json)];
 
+int _i0(Object? v) => v == null ? 0 : (v as num).toInt();
+int? _i(Object? v) => v == null ? null : (v as num).toInt();
+
+/// Which notifications the user wants (Profile > Notifications).
+class NotifyPrefs {
+  NotifyPrefs({this.threshold = true, this.leak = true, this.device = true, this.tips = true, this.push = false});
+  final bool threshold, leak, device, tips, push;
+  factory NotifyPrefs.fromJson(Json? j) => j == null
+      ? NotifyPrefs()
+      : NotifyPrefs(
+          threshold: j['threshold'] != false,
+          leak: j['leak'] != false,
+          device: j['device'] != false,
+          tips: j['tips'] != false,
+          push: j['push'] == true,
+        );
+  Json toJson() => {'threshold': threshold, 'leak': leak, 'device': device, 'tips': tips, 'push': push};
+  NotifyPrefs copyWith({bool? threshold, bool? leak, bool? device, bool? tips, bool? push}) => NotifyPrefs(
+        threshold: threshold ?? this.threshold,
+        leak: leak ?? this.leak,
+        device: device ?? this.device,
+        tips: tips ?? this.tips,
+        push: push ?? this.push,
+      );
+}
+
 class User {
-  User({required this.id, required this.email, required this.role});
-  final String id, email, role;
+  User({
+    required this.id,
+    required this.email,
+    required this.role,
+    this.fullName,
+    this.language,
+    this.status = 'active',
+    this.emailVerified = true,
+    NotifyPrefs? notifyPrefs,
+    this.createdAt,
+  }) : notifyPrefs = notifyPrefs ?? NotifyPrefs();
+  final String id, email, role, status;
+  final String? fullName, language;
+  final bool emailVerified;
+  final NotifyPrefs notifyPrefs;
+  final DateTime? createdAt;
   bool get isAdmin => role == 'admin';
-  factory User.fromJson(Json j) => User(id: j['id'], email: j['email'], role: j['role']);
+
+  /// Name to show: the full name, else the e-mail.
+  String get display => (fullName ?? '').trim().isNotEmpty ? fullName!.trim() : email;
+
+  /// First letter for the round avatar.
+  String get initial => display.isEmpty ? '?' : display.characters.first.toUpperCase();
+
+  factory User.fromJson(Json j) => User(
+        id: j['id'],
+        email: j['email'],
+        role: j['role'] ?? 'household',
+        fullName: j['full_name'],
+        language: j['language'],
+        status: j['status'] ?? 'active',
+        emailVerified: j['email_verified'] != false,
+        notifyPrefs: NotifyPrefs.fromJson(j['notify_prefs'] as Json?),
+        createdAt: _dt(j['created_at']),
+      );
+}
+
+extension on String {
+  Iterable<String> get characters => runes.map(String.fromCharCode);
 }
 
 class DeviceStatus {
@@ -145,18 +206,24 @@ class WaterSummary {
   WaterSummary({
     required this.monthL,
     required this.tariffConfigured,
+    this.tranche,
+    this.nextThresholdM3,
     this.billToDate,
     required this.forecast,
     required this.leakSuspected,
   });
   final double monthL;
   final bool tariffConfigured;
+  final Tranche? tranche;
+  final double? nextThresholdM3;
   final Bill? billToDate;
   final Forecast forecast;
   final bool leakSuspected;
   factory WaterSummary.fromJson(Json j) => WaterSummary(
         monthL: _d0(j['month_l']),
         tariffConfigured: j['tariff_configured'] == true,
+        tranche: j['tranche'] == null ? null : Tranche.fromJson(j['tranche']),
+        nextThresholdM3: _d(j['next_threshold_m3']),
         billToDate: j['bill_to_date'] == null ? null : Bill(j['bill_to_date']),
         forecast: Forecast.fromJson(j['forecast']),
         leakSuspected: j['leak_suspected'] == true,
@@ -171,14 +238,23 @@ class Alert {
     required this.severity,
     required this.message,
     this.extraCostDt,
+    this.isEstimate = false,
     required this.createdAt,
     this.acknowledgedAt,
+    this.params = const {},
+    this.householdId,
   });
   final String id, type, severity, message;
-  final String? resource;
+  final String? resource, householdId;
   final double? extraCostDt;
+  final bool isEstimate;
   final DateTime createdAt;
   final DateTime? acknowledgedAt;
+
+  /// Values behind the message (kwh_left, crossing_day...), so the app can write it
+  /// in the user's language instead of the stored French text.
+  final Json params;
+  bool get acknowledged => acknowledgedAt != null;
   factory Alert.fromJson(Json j) => Alert(
         id: j['id'],
         type: j['type'],
@@ -186,9 +262,48 @@ class Alert {
         severity: j['severity'] ?? 'warning',
         message: j['message'] ?? '',
         extraCostDt: _d(j['extra_cost_dt']),
+        isEstimate: j['is_estimate'] == true,
         createdAt: DateTime.parse(j['created_at']),
         acknowledgedAt: _dt(j['acknowledged_at']),
+        params: (j['params'] as Json?) ?? const {},
+        householdId: j['household_id'],
       );
+}
+
+/// An alert of any of the user's homes (notification history).
+class AppNotification extends Alert {
+  AppNotification({
+    required super.id,
+    required super.type,
+    super.resource,
+    required super.severity,
+    required super.message,
+    super.extraCostDt,
+    super.isEstimate,
+    required super.createdAt,
+    super.acknowledgedAt,
+    super.params,
+    super.householdId,
+    required this.householdName,
+  });
+  final String householdName;
+  factory AppNotification.fromJson(Json j) {
+    final a = Alert.fromJson(j);
+    return AppNotification(
+      id: a.id,
+      type: a.type,
+      resource: a.resource,
+      severity: a.severity,
+      message: a.message,
+      extraCostDt: a.extraCostDt,
+      isEstimate: a.isEstimate,
+      createdAt: a.createdAt,
+      acknowledgedAt: a.acknowledgedAt,
+      params: a.params,
+      householdId: a.householdId,
+      householdName: j['household_name'] ?? '',
+    );
+  }
 }
 
 class HeavyConsumer {
@@ -209,6 +324,7 @@ class Dashboard {
   Dashboard({
     required this.generatedAt,
     required this.empty,
+    this.householdId,
     required this.householdName,
     required this.subscribedKva,
     this.device,
@@ -220,6 +336,7 @@ class Dashboard {
   });
   final DateTime generatedAt;
   final bool empty;
+  final String? householdId;
   final String householdName;
   final double subscribedKva;
   final DeviceStatus? device;
@@ -231,6 +348,7 @@ class Dashboard {
   factory Dashboard.fromJson(Json j) => Dashboard(
         generatedAt: DateTime.parse(j['generated_at']),
         empty: j['state'] == 'empty',
+        householdId: j['household_id'],
         householdName: j['household_name'] ?? '',
         subscribedKva: _d0(j['subscribed_kva']),
         device: j['device'] == null ? null : DeviceStatus.fromJson(j['device']),
@@ -262,11 +380,31 @@ class Series {
 }
 
 class Tip {
-  Tip({required this.id, required this.code, required this.text, this.savingDt, required this.source});
+  Tip({
+    required this.id,
+    required this.code,
+    required this.text,
+    this.savingDt,
+    required this.source,
+    this.isEstimate = true,
+    this.createdAt,
+    this.params = const {},
+  });
   final String id, code, text, source;
   final double? savingDt;
-  factory Tip.fromJson(Json j) =>
-      Tip(id: j['id'], code: j['code'], text: j['text'], savingDt: _d(j['saving_dt']), source: j['source'] ?? 'rule');
+  final bool isEstimate;
+  final DateTime? createdAt;
+  final Json params;
+  factory Tip.fromJson(Json j) => Tip(
+        id: j['id'],
+        code: j['code'],
+        text: j['text'],
+        savingDt: _d(j['saving_dt']),
+        source: j['source'] ?? 'rule',
+        isEstimate: j['is_estimate'] != false,
+        createdAt: _dt(j['created_at']),
+        params: (j['params'] as Json?) ?? const {},
+      );
 }
 
 class DayScore {
@@ -281,11 +419,42 @@ class DayScore {
 }
 
 class Badge {
-  Badge({required this.code, required this.label, required this.description, required this.earned});
+  Badge({required this.code, required this.label, required this.description, required this.earned, this.earnedAt});
   final String code, label, description;
   final bool earned;
-  factory Badge.fromJson(Json j) =>
-      Badge(code: j['code'], label: j['label'], description: j['description'], earned: j['earned'] == true);
+  final DateTime? earnedAt;
+  factory Badge.fromJson(Json j) => Badge(
+        code: j['code'],
+        label: j['label'],
+        description: j['description'],
+        earned: j['earned'] == true,
+        earnedAt: _dt(j['earned_at']),
+      );
+}
+
+class Ranking {
+  Ranking(Json j)
+      : isMock = j['is_mock'] == true,
+        similarHomes = _i0(j['similar_homes']),
+        betterThanPct = _d0(j['better_than_pct']),
+        label = j['label'] ?? '';
+  final bool isMock;
+  final int similarHomes;
+  final double betterThanPct;
+  final String label;
+}
+
+class Challenge {
+  Challenge(Json j)
+      : title = j['title'] ?? '',
+        description = j['description'] ?? '',
+        targetKwh = _d(j['target_kwh']),
+        currentKwh = _d0(j['current_kwh']),
+        progressPct = _d0(j['progress_pct']),
+        status = j['status'] ?? 'en_cours';
+  final String title, description, status; // en_cours | reussi | pas_assez_de_donnees
+  final double? targetKwh;
+  final double currentKwh, progressPct;
 }
 
 class Score {
@@ -299,10 +468,16 @@ class Score {
   final List<Badge> badges;
   Json get ranking => j['ranking'] as Json;
   Json get challenge => j['weekly_challenge'] as Json;
+  Ranking get rankingInfo => Ranking(ranking);
+  Challenge get weeklyChallenge => Challenge(challenge);
 }
 
 class Settings {
   Settings({
+    this.householdId = '',
+    this.address,
+    this.occupants,
+    this.onboardingDone = true,
     required this.name,
     required this.subscribedKva,
     required this.alertMarginKwh,
@@ -313,13 +488,20 @@ class Settings {
     required this.devices,
     required this.demoMode,
   });
-  final String name;
+  final String householdId, name;
+  final String? address;
+  final int? occupants;
+  final bool onboardingDone;
   final double subscribedKva;
   final int alertMarginKwh, leakStartHour, leakEndHour, leakMinMinutes;
   final String? activeDeviceId;
   final List<DeviceStatus> devices;
   final bool demoMode;
   factory Settings.fromJson(Json j) => Settings(
+        householdId: j['household_id'] ?? '',
+        address: j['address'],
+        occupants: _i(j['occupants']),
+        onboardingDone: j['onboarding_done'] != false,
         name: j['name'],
         subscribedKva: _d0(j['subscribed_kva']),
         alertMarginKwh: (j['alert_margin_kwh'] as num).toInt(),
@@ -361,4 +543,251 @@ class SpikeOut {
   double get extraW => _d0(j['extra_w']);
   int get durationS => (j['duration_s'] as num?)?.toInt() ?? 0;
   double get energyKwh => _d0(j['energy_kwh']);
+}
+
+// ---- Accounts, homes, appliances, assistant, history, support (full app) -----------------
+
+/// A code was e-mailed (sign-up, resend, forgot password). In the demo without SMTP the
+/// API also returns it so it can be shown on screen.
+class CodeSent {
+  CodeSent(Json j)
+      : email = j['email'] ?? '',
+        expiresInMin = _i0(j['expires_in_min']),
+        devCode = j['dev_code'];
+  final String email;
+  final int expiresInMin;
+  final String? devCode;
+}
+
+class Household {
+  Household({
+    required this.id,
+    required this.name,
+    this.address,
+    this.occupants,
+    required this.subscribedKva,
+    required this.alertMarginKwh,
+    required this.onboardingDone,
+    this.createdAt,
+    required this.devices,
+    required this.applianceCount,
+    required this.unreadAlerts,
+  });
+  final String id, name;
+  final String? address;
+  final int? occupants;
+  final double subscribedKva;
+  final int alertMarginKwh, applianceCount, unreadAlerts;
+  final bool onboardingDone;
+  final DateTime? createdAt;
+  final List<DeviceStatus> devices;
+
+  /// "Tunis" from "12 rue X, Tunis": the last part of the address, for the header.
+  String? get city {
+    final a = (address ?? '').trim();
+    if (a.isEmpty) return null;
+    return a.split(',').last.trim();
+  }
+
+  factory Household.fromJson(Json j) => Household(
+        id: j['id'],
+        name: j['name'] ?? '',
+        address: j['address'],
+        occupants: _i(j['occupants']),
+        subscribedKva: _d0(j['subscribed_kva']),
+        alertMarginKwh: _i0(j['alert_margin_kwh']),
+        onboardingDone: j['onboarding_done'] != false,
+        createdAt: _dt(j['created_at']),
+        devices: _list(j['devices'], DeviceStatus.fromJson),
+        applianceCount: _i0(j['appliance_count']),
+        unreadAlerts: _i0(j['unread_alerts']),
+      );
+}
+
+/// Body of POST / PUT /api/households.
+class HouseholdIn {
+  HouseholdIn({required this.name, this.address, this.occupants, required this.subscribedKva, required this.alertMarginKwh});
+  final String name;
+  final String? address;
+  final int? occupants;
+  final double subscribedKva;
+  final int alertMarginKwh;
+  Json toJson() => {
+        'name': name,
+        'address': (address ?? '').trim().isEmpty ? null : address!.trim(),
+        'occupants': occupants,
+        'subscribed_kva': subscribedKva,
+        'alert_margin_kwh': alertMarginKwh,
+      };
+}
+
+/// A box or simulator added to a home: the key is shown once.
+class DeviceCreated {
+  DeviceCreated(Json j)
+      : device = DeviceStatus.fromJson(j['device']),
+        apiKey = j['api_key'] ?? '';
+  final DeviceStatus device;
+  final String apiKey;
+}
+
+/// Body of POST / PUT /api/appliances (power and hours: null = catalogue typical value).
+class ApplianceIn {
+  ApplianceIn({
+    required this.category,
+    required this.name,
+    this.quantity = 1,
+    this.powerW,
+    this.hoursPerDay,
+    this.startHour,
+    this.endHour,
+  });
+  final String category, name;
+  final int quantity;
+  final double? powerW, hoursPerDay;
+  final int? startHour, endHour;
+  Json toJson() => {
+        'category': category,
+        'name': name,
+        'quantity': quantity,
+        'power_w': powerW,
+        'hours_per_day': hoursPerDay,
+        'start_hour': startHour,
+        'end_hour': endHour,
+      };
+}
+
+class Appliance extends ApplianceIn {
+  Appliance(Json j)
+      : id = j['id'],
+        effectivePowerW = _d0(j['effective_power_w']),
+        effectiveHoursPerDay = _d0(j['effective_hours_per_day']),
+        estimatedKwhMonth = _d0(j['estimated_kwh_month']),
+        super(
+          category: j['category'] ?? 'other',
+          name: j['name'] ?? '',
+          quantity: _i(j['quantity']) ?? 1,
+          powerW: _d(j['power_w']),
+          hoursPerDay: _d(j['hours_per_day']),
+          startHour: _i(j['start_hour']),
+          endHour: _i(j['end_hour']),
+        );
+  final String id;
+  final double effectivePowerW, effectiveHoursPerDay, estimatedKwhMonth;
+}
+
+class ApplianceCatalogItem {
+  ApplianceCatalogItem(Json j)
+      : category = j['category'],
+        typicalPowerW = _d0(j['typical_power_w']),
+        typicalHoursPerDay = _d0(j['typical_hours_per_day']),
+        icon = j['icon'] ?? '';
+  final String category, icon;
+  final double typicalPowerW, typicalHoursPerDay;
+}
+
+class ApplianceShare {
+  ApplianceShare(Json j)
+      : id = j['id'],
+        category = j['category'] ?? 'other',
+        name = j['name'] ?? '',
+        kwhMonth = _d0(j['kwh_month']),
+        sharePct = _d0(j['share_pct']),
+        costDt = _d(j['cost_dt']);
+  final String? id;
+  final String category, name;
+  final double kwhMonth, sharePct;
+  final double? costDt;
+}
+
+/// Consumption insights: status is normal | attention | warning | critical | unavailable.
+class Insights {
+  Insights(Json j)
+      : generatedAt = DateTime.parse(j['generated_at']),
+        profileKwhMonth = _d(j['profile_kwh_month']),
+        measuredMonthKwh = _d0(j['measured_month_kwh']),
+        forecastKwh = _d(j['forecast_kwh']),
+        forecastBillDt = _d(j['forecast_bill_dt']),
+        breakdown = _list(j['breakdown'], ApplianceShare.new),
+        last7KwhPerDay = _d(j['last7_kwh_per_day']),
+        previousKwhPerDay = _d(j['previous_kwh_per_day']),
+        trendPct = _d(j['trend_pct']),
+        unusualIncrease = j['unusual_increase'] == true,
+        waterLast7LPerDay = _d(j['water_last7_l_per_day']),
+        waterPreviousLPerDay = _d(j['water_previous_l_per_day']),
+        waterTrendPct = _d(j['water_trend_pct']),
+        waterForecastL = _d(j['water_forecast_l']),
+        status = j['status'] ?? 'normal',
+        statusReasons = [for (final r in (j['status_reasons'] as List? ?? const [])) '$r'];
+  final DateTime generatedAt;
+  final double? profileKwhMonth, forecastKwh, forecastBillDt, last7KwhPerDay, previousKwhPerDay, trendPct;
+  final double measuredMonthKwh;
+  final List<ApplianceShare> breakdown;
+  final bool unusualIncrease;
+  final double? waterLast7LPerDay, waterPreviousLPerDay, waterTrendPct, waterForecastL;
+  final String status;
+  final List<String> statusReasons;
+}
+
+class ChatTurn {
+  ChatTurn(this.role, this.text);
+  final String role; // user | assistant
+  final String text;
+  Json toJson() => {'role': role, 'text': text};
+}
+
+class ChatFact {
+  ChatFact(Json j)
+      : label = j['label'] ?? '',
+        value = j['value'] ?? '',
+        kind = j['kind'] ?? 'measured';
+  final String label, value, kind; // measured | forecast | assumption | profile
+}
+
+class ChatOut {
+  ChatOut(Json j)
+      : intent = j['intent'] ?? '',
+        answer = j['answer'] ?? '',
+        facts = _list(j['facts'], ChatFact.new),
+        suggestions = [for (final s in (j['suggestions'] as List? ?? const [])) '$s'],
+        source = j['source'] ?? 'rule';
+  final String intent, answer, source;
+  final List<ChatFact> facts;
+  final List<String> suggestions;
+}
+
+class HistoryMonth {
+  HistoryMonth(Json j)
+      : month = j['month'] ?? '',
+        kwh = _d0(j['kwh']),
+        litres = _d0(j['litres']),
+        billDt = _d(j['bill_dt']),
+        waterBillDt = _d(j['water_bill_dt']),
+        trancheIndex = _i(j['tranche_index']),
+        partial = j['partial'] == true;
+  final String month; // YYYY-MM
+  final double kwh, litres;
+  final double? billDt, waterBillDt;
+  final int? trancheIndex;
+  final bool partial;
+}
+
+class History {
+  History(Json j)
+      : months = _list(j['months'], HistoryMonth.new),
+        isEstimate = j['is_estimate'] != false;
+  final List<HistoryMonth> months;
+  final bool isEstimate;
+}
+
+class Ticket {
+  Ticket(Json j)
+      : id = j['id'],
+        email = j['email'] ?? '',
+        category = j['category'] ?? '',
+        subject = j['subject'] ?? '',
+        message = j['message'] ?? '',
+        status = j['status'] ?? 'open',
+        createdAt = DateTime.parse(j['created_at']);
+  final String id, email, category, subject, message, status;
+  final DateTime createdAt;
 }

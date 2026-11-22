@@ -7,7 +7,7 @@ checked on the USB phone (SM A175F) with `adb reverse tcp:8000 tcp:8000`.
       saved in prefs, RTL for Arabic, language switch on the login screen
       | verify: analyze; login screen on phone in FR, EN, AR (RTL), dark and light
       | files: theme.dart, util/i18n.dart, state/app_state.dart, main.dart, login_screen.dart, pubspec.yaml
-- [ ] 2. API layer for the new endpoints (+ X-Household-Id, error codes) and models
+- [x] 2. API layer for the new endpoints (+ X-Household-Id, error codes) and models
       | verify: flutter test (model parsing tests)
       | files: api/api.dart, api/models.dart, test/
 - [ ] 3. Auth: login with "remember me" and unverified e-mail, register + code, resend,
