@@ -22,7 +22,7 @@ checked on the USB phone (SM A175F) with `adb reverse tcp:8000 tcp:8000`.
       insights and consumption status
       | verify: demo dashboard figures equal the web's for the same home
       | files: screens/shell.dart, screens/home_screen.dart, widgets/*
-- [ ] 6. Électricité, Eau, Historique (monthly kWh and bills)
+- [x] 6. Électricité, Eau, Historique (monthly kWh and bills)
       | verify: screens load on phone, history bars match the web
 - [ ] 7. Assistant chat
       | verify: "Combien vais-je payer ce mois-ci ?" answers with a DT amount

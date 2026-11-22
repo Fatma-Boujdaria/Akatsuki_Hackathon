@@ -7,6 +7,7 @@ import '../util/format.dart';
 import '../util/i18n.dart';
 import '../widgets/fields.dart';
 import '../widgets/ui.dart';
+import 'history_screen.dart';
 import 'households_screen.dart';
 import 'settings_screen.dart';
 import 'shell.dart';
@@ -62,6 +63,11 @@ class ProfileScreen extends StatelessWidget {
             label: L('Alertes et notifications', 'Alerts and notifications', 'التنبيهات'),
             value: alerts > 0 ? '$alerts' : null,
             onTap: () => Shell.of(context).openAlerts(),
+          ),
+          ListRow(
+            icon: LucideIcons300.history,
+            label: L('Historique', 'History', 'التاريخ'),
+            onTap: () => push(const HistoryScreen()),
           ),
           ListRow(
             icon: LucideIcons300.warehouse,

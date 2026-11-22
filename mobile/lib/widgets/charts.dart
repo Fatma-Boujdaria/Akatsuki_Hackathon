@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../api/models.dart';
 import '../theme.dart';
+import '../util/i18n.dart';
 import '../util/format.dart';
 import '../util/tranche.dart';
 import 'ui.dart';
@@ -121,7 +122,7 @@ class MonthChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = 'Cumul de ${monthName(now)}';
+    final title = L('Cumul de ${monthName(now)}', '${monthName(now)} so far', 'المجموع متاع ${monthName(now)}');
     if (series == null || elec == null || view == null) {
       return ChartCard(title: title, unit: 'KWH · ESTIMATION', child: const Skeleton(height: 240));
     }
@@ -193,7 +194,7 @@ class MonthChart extends StatelessWidget {
     return ChartCard(
       title: title,
       unit: 'KWH · ESTIMATION',
-      footer: e.forecast.available ? e.forecast.assumption : 'Prévision disponible après une heure de mesures.',
+      footer: e.forecast.available ? e.forecast.assumption : L('Prévision disponible après une heure de mesures.', 'Forecast available after one hour of readings.', 'التوقع يتوفّر بعد ساعة قياس.'),
       child: SizedBox(
         height: 240,
         child: LayoutBuilder(builder: (context, c) {
@@ -247,9 +248,9 @@ class MonthChart extends StatelessWidget {
                     ],
                   ),
                   lineTouchData: _touch(p, (x, y, _) {
-                    if ((x - nowX).abs() < 0.01) return 'maintenant\n${kwh(y)}';
+                    if ((x - nowX).abs() < 0.01) return '${L('maintenant', 'now', 'توّا')}\n${kwh(y)}';
                     final d = x.floor();
-                    return 'début du $d\n${kwh(y)}';
+                    return '${L('début du $d', 'start of the $d', 'بداية $d')}\n${kwh(y)}';
                   }),
                   lineBarsData: bars,
                 ),
@@ -259,14 +260,14 @@ class MonthChart extends StatelessWidget {
             Positioned(
               right: c.maxWidth - px(nowX) + 10,
               top: py(e.monthKwh) + (nearLine ? 6 : -22),
-              child: Text('${kwhValue(e.monthKwh)} kWh aujourd\'hui',
+              child: Text('${kwhValue(e.monthKwh)} kWh ${L('aujourd\'hui', 'today', 'اليوم')}',
                   style: T.small(p.ink).copyWith(fontSize: 12, fontWeight: FontWeight.w600)),
             ),
             if (fc != null)
               Positioned(
                 right: 0,
                 top: math.max(0, py(math.min(fc, yMax)) - (fc > (v.next ?? double.infinity) ? 22 : -4)),
-                child: Text('prévision ≈ ${num(fc.roundToDouble())}', style: T.small(p.elecStroke).copyWith(fontSize: 12)),
+                child: Text('${L('prévision', 'forecast', 'التوقع')} ≈ ${num(fc.roundToDouble())}', style: T.small(p.elecStroke).copyWith(fontSize: 12)),
               ),
             if (showCross)
               Positioned(
@@ -419,19 +420,19 @@ class DayCharts extends StatelessWidget {
   Widget build(BuildContext context) {
     final tg = context.tg;
     if (power == null || water == null) {
-      return const ChartCard(title: 'Aujourd\'hui', unit: 'MÊME AXE DU TEMPS', child: Skeleton(height: 250));
+      return ChartCard(title: L('Aujourd\'hui', 'Today', 'اليوم'), unit: L('même axe du temps', 'same time axis', 'نفس محور الوقت'), child: const Skeleton(height: 250));
     }
     return ChartCard(
-      title: 'Aujourd\'hui',
-      unit: 'MÊME AXE DU TEMPS',
+      title: L('Aujourd\'hui', 'Today', 'اليوم'),
+      unit: L('même axe du temps', 'same time axis', 'نفس محور الوقت'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Label('Puissance · W', color: tg.elecInk),
+          Label('${L('Puissance', 'Power', 'القوة')} · W', color: tg.elecInk),
           const SizedBox(height: 6),
           DayStrip(water: false, series: power, live: livePower, liveAt: liveAt, height: 104, showAxis: false),
           const SizedBox(height: 14),
-          Label('Débit · L/min', color: tg.waterInk),
+          Label('${L('Débit', 'Flow', 'الدبي')} · L/min', color: tg.waterInk),
           const SizedBox(height: 6),
           DayStrip(water: true, series: water, live: liveFlow, liveAt: liveAt, height: 128),
         ],
@@ -450,7 +451,7 @@ class WaterBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (series == null) {
-      return const ChartCard(title: 'Litres par jour', unit: 'L · CE MOIS-CI', child: Skeleton(height: 200));
+      return ChartCard(title: L('Litres par jour', 'Litres per day', 'لترات في النهار'), unit: L('L · ce mois-ci', 'L · this month', 'L · هالشهر'), child: const Skeleton(height: 200));
     }
     final p = _Palette(context.tg);
     final local = tunis(now);
@@ -463,9 +464,9 @@ class WaterBars extends StatelessWidget {
     final yMax = DayStrip._niceMax(maxV * 1.05);
 
     return ChartCard(
-      title: 'Litres par jour',
-      unit: 'L · CE MOIS-CI',
-      footer: points.isEmpty ? null : 'Moyenne : ${litres(avg)} par jour.',
+      title: L('Litres par jour', 'Litres per day', 'لترات في النهار'),
+      unit: L('L · ce mois-ci', 'L · this month', 'L · هالشهر'),
+      footer: points.isEmpty ? null : L('Moyenne : ${litres(avg)} par jour.', 'Average: ${litres(avg)} a day.', 'المعدّل: ${litres(avg)} في النهار.'),
       child: SizedBox(
         height: 200,
         child: BarChart(

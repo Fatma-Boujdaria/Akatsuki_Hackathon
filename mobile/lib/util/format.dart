@@ -122,6 +122,14 @@ String weekdayShort(DateTime instant) => _weekdays[tunis(instant).weekday - 1];
 /// novembre
 String monthName(DateTime instant) => _monthsLong[tunis(instant).month - 1];
 
+/// "2026-10" -> "oct." (short) or "octobre 2026" (long), in the current language.
+String monthKeyLabel(String key, {bool long = false}) {
+  final parts = key.split('-');
+  if (parts.length < 2) return key;
+  final m = (int.tryParse(parts[1]) ?? 1).clamp(1, 12);
+  return long ? '${_monthsLong[m - 1]} ${parts[0]}' : _monthsShort[m - 1];
+}
+
 int daysInMonth(int year, int month) => DateTime.utc(year, month + 1, 0).day;
 
 /// Whole days left after today in the local month (21 nov. -> 9).
