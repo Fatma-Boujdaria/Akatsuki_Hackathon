@@ -60,11 +60,20 @@ function Get-WifiIp {
 }
 
 function Test-FirewallOpen {
-    $rules = Get-NetFirewallPortFilter -Protocol TCP -ErrorAction SilentlyContinue |
-        Where-Object { $_.LocalPort -contains "$ApiPort" } |
-        Get-NetFirewallRule -ErrorAction SilentlyContinue |
+    # Listing every port filter needs admin rights ("access denied" otherwise), so start
+    # from the rules, which anyone can read, and only then look at their ports.
+    $open = { param($rule) @($rule | Get-NetFirewallPortFilter -ErrorAction SilentlyContinue |
+        Where-Object { $_.Protocol -eq "TCP" -and ($_.LocalPort -contains "$ApiPort" -or $_.LocalPort -contains "Any") }).Count -gt 0 }
+    $ours = Get-NetFirewallRule -DisplayName $FirewallRule -ErrorAction SilentlyContinue |
         Where-Object { $_.Enabled -eq "True" -and $_.Direction -eq "Inbound" -and $_.Action -eq "Allow" }
-    return [bool]$rules
+    if ($ours -and (& $open $ours)) { return $true }
+    $others = Get-NetFirewallRule -Direction Inbound -Action Allow -Enabled True -ErrorAction SilentlyContinue |
+        Where-Object { $_.DisplayName -ne $FirewallRule }
+    foreach ($r in $others) {
+        $ports = $r | Get-NetFirewallPortFilter -ErrorAction SilentlyContinue
+        if ($ports | Where-Object { $_.Protocol -eq "TCP" -and $_.LocalPort -contains "$ApiPort" }) { return $true }
+    }
+    return $false
 }
 
 function Get-PortOwners($port) {
