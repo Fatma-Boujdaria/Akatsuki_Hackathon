@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/api.dart';
 import '../api/models.dart';
+import '../util/i18n.dart';
 import '../util/tranche.dart';
 
 /// Default backend address. 10.0.2.2 is the computer running the Android emulator;
@@ -24,6 +25,8 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
       token: _prefs.getString('token'),
       onUnauthorized: _onUnauthorized,
     );
+    language = Lang.parse(_prefs.getString('lang'));
+    setCurrentLang(language);
     themeMode = switch (_prefs.getString('theme')) {
       'light' => ThemeMode.light,
       'dark' => ThemeMode.dark,
@@ -45,6 +48,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   User? user;
   bool checking = false;
   ThemeMode themeMode = ThemeMode.system;
+  Lang language = Lang.fr;
 
   Dashboard? dashboard;
   String? dashboardError;
@@ -84,9 +88,16 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  Future<void> login(String server, String email, String password) async {
+  /// Backend address typed on the login screen (saved for the next start).
+  void setServer(String server) {
     final url = server.trim().replaceFirst(RegExp(r'/+$'), '');
     api.baseUrl = url.contains('://') ? url : 'http://$url';
+    _prefs.setString('server', api.baseUrl);
+    notifyListeners();
+  }
+
+  Future<void> login(String server, String email, String password) async {
+    setServer(server);
     final (token, u) = await api.login(email.trim(), password);
     api.token = token;
     user = u;
@@ -119,6 +130,15 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   void setTheme(ThemeMode mode) {
     themeMode = mode;
     _prefs.setString('theme', switch (mode) { ThemeMode.light => 'light', ThemeMode.dark => 'dark', _ => 'system' });
+    notifyListeners();
+  }
+
+  /// FR / EN / AR. The whole app rebuilds (MaterialApp is keyed by the language).
+  void setLanguage(Lang l) {
+    if (l == language) return;
+    language = l;
+    setCurrentLang(l);
+    _prefs.setString('lang', l.name);
     notifyListeners();
   }
 

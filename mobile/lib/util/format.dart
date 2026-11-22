@@ -8,9 +8,15 @@
 // Tunisia is UTC+1 all year (no DST since 2009): local times are computed from
 // UTC, so the app shows the household's time whatever the phone's time zone.
 
+import 'i18n.dart';
+
 const nbsp = ' ';
 
+// French and Tunisian Arabic write 1 234,5 (Latin digits, like the bills); English 1,234.5.
 String num(double value, {int decimals = 0, bool fixed = true}) {
+  final en = lang == Lang.en;
+  final group = en ? ',' : nbsp;
+  final point = en ? '.' : ',';
   final negative = value < 0;
   var text = value.abs().toStringAsFixed(decimals);
   var intPart = text;
@@ -23,11 +29,11 @@ String num(double value, {int decimals = 0, bool fixed = true}) {
   }
   final buf = StringBuffer();
   for (var i = 0; i < intPart.length; i++) {
-    if (i > 0 && (intPart.length - i) % 3 == 0) buf.write(nbsp);
+    if (i > 0 && (intPart.length - i) % 3 == 0) buf.write(group);
     buf.write(intPart[i]);
   }
   final sign = negative && (intPart != '0' || frac.replaceAll('0', '').isNotEmpty) ? '-' : '';
-  return frac.isEmpty ? '$sign$buf' : '$sign$buf,$frac';
+  return frac.isEmpty ? '$sign$buf' : '$sign$buf$point$frac';
 }
 
 /// kWh left / used: integer from 10, one decimal below (dropped when round).
@@ -56,11 +62,31 @@ String dt(double v) {
 
 // ---- Dates -------------------------------------------------------------------------
 
-const _weekdays = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
-const _monthsShort = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
-const _monthsLong = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+List<String> get _weekdays => pick(
+      fr: const ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'],
+      en: const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      ar: const ['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'],
+    );
+List<String> get _monthsShort => pick(
+      fr: const ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'],
+      en: const ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      ar: _monthsAr,
+    );
+List<String> get _monthsLong => pick(
+      fr: const [
+        'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+        'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+      ],
+      en: const [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December',
+      ],
+      ar: _monthsAr,
+    );
+// Month names used in Tunisia (جانفي، فيفري...), as on the bills.
+const _monthsAr = [
+  'جانفي', 'فيفري', 'مارس', 'أفريل', 'ماي', 'جوان',
+  'جويلية', 'أوت', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
 ];
 
 const tunisOffset = Duration(hours: 1);
@@ -137,13 +163,21 @@ String shortAge(double seconds) {
   if (m < 60) return '$m${nbsp}min';
   final h = (m / 60).round();
   if (h < 48) return '$h${nbsp}h';
-  return '${(h / 24).round()}${nbsp}j';
+  return '${(h / 24).round()}$nbsp${L('j', 'd', 'يوم')}';
+}
+
+/// "il y a 4 s", "4 s ago", "قبل 4 s"
+String ago(double seconds) {
+  final v = shortAge(seconds);
+  return L('il y a $v', '$v ago', 'قبل $v');
 }
 
 /// "SAM. 21 NOV. · ENCORE 9 JOURS"
 String dateLabel(DateTime now) {
   final left = daysLeftInMonth(now);
-  final rest = left == 0 ? 'dernier jour' : 'encore $left jour${left > 1 ? 's' : ''}';
+  final rest = left == 0
+      ? L('dernier jour', 'last day', 'آخر نهار')
+      : L('encore $left jour${left > 1 ? 's' : ''}', '$left day${left > 1 ? 's' : ''} left', 'باقي $left يوم');
   return '${weekdayDayMonth(now)} · $rest'.toUpperCase();
 }
 

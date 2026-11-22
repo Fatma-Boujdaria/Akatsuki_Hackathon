@@ -5,6 +5,7 @@ import 'package:tranche_guard/api/models.dart';
 import 'package:tranche_guard/main.dart';
 import 'package:tranche_guard/state/app_state.dart';
 import 'package:tranche_guard/theme.dart';
+import 'package:tranche_guard/util/i18n.dart';
 import 'package:tranche_guard/util/tranche.dart';
 import 'package:tranche_guard/widgets/hero_card.dart';
 import 'package:tranche_guard/widgets/status.dart';
@@ -75,16 +76,33 @@ Widget wrap(Widget child, {TG tg = TG.light}) => MaterialApp(
     );
 
 void main() {
-  testWidgets('login screen asks for email, password and server', (tester) async {
+  testWidgets('login screen asks for email and password, shows the server', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(TrancheGuardApp(state: AppState(prefs)));
     await tester.pump();
-    expect(find.text('Connexion'), findsOneWidget);
-    expect(find.text('Email'), findsOneWidget);
+    expect(find.text('Ta facture, sans surprise'), findsOneWidget);
+    expect(find.text('E-mail'), findsOneWidget);
     expect(find.text('Mot de passe'), findsOneWidget);
-    expect(find.text('Serveur'), findsOneWidget);
+    expect(find.text('Se connecter'), findsOneWidget);
     expect(find.text(kDefaultApiUrl), findsOneWidget);
+  });
+
+  testWidgets('language switch: English texts, Arabic right to left', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final state = AppState(prefs);
+    await tester.pumpWidget(TrancheGuardApp(state: state));
+    await tester.pump();
+    await tester.tap(find.text('EN'));
+    await tester.pumpAndSettle();
+    expect(find.text('Log in'), findsOneWidget);
+    expect(prefs.getString('lang'), 'en');
+    await tester.tap(find.text('تونسي'));
+    await tester.pumpAndSettle();
+    expect(find.text('ادخل'), findsOneWidget);
+    expect(Directionality.of(tester.element(find.text('ادخل'))), TextDirection.rtl);
+    state.setLanguage(Lang.fr); // global language back to French for the next tests
   });
 
   testWidgets('hero card: one number leads, every DT carries « estimation »', (tester) async {

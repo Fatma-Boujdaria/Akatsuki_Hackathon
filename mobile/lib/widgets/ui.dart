@@ -1,14 +1,25 @@
+import 'package:lucide_icons_flutter/lucide_icons_300.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../theme.dart';
+import '../util/i18n.dart';
 
-// Flat, hairlined, 44 px to the thumb (charter board 05): no shadows, 1 px
-// hairlines, radius 10 for controls, 14 for cards.
+// "App Screens" design (DESIGN.md): borderless cards on a navy (or pale blue) ground,
+// 20 px corners, pill chips, 44 px touch targets, Plus Jakarta Sans 700-800 for numbers.
+// Same components as frontend/src/components/ui.tsx.
 
-enum BtnKind { primary, secondary, ghost }
+enum BtnKind { primary, secondary, ghost, danger }
 
 class Btn extends StatelessWidget {
-  const Btn(this.label, {super.key, required this.onPressed, this.kind = BtnKind.primary, this.icon, this.expand = false});
+  const Btn(
+    this.label, {
+    super.key,
+    required this.onPressed,
+    this.kind = BtnKind.primary,
+    this.icon,
+    this.expand = false,
+    this.large = false,
+  });
 
   final String label;
   final VoidCallback? onPressed;
@@ -16,14 +27,18 @@ class Btn extends StatelessWidget {
   final IconData? icon;
   final bool expand;
 
+  /// 56 px main action (login, onboarding).
+  final bool large;
+
   @override
   Widget build(BuildContext context) {
     final tg = context.tg;
     final disabled = onPressed == null;
-    final (bg, fg, border) = switch (kind) {
-      BtnKind.primary => (tg.primary, tg.onPrimary, null),
-      BtnKind.secondary => (tg.surface, tg.ink, BorderSide(color: tg.control.withValues(alpha: 0.7))),
-      BtnKind.ghost => (Colors.transparent, tg.primary, null),
+    final (bg, fg) = switch (kind) {
+      BtnKind.primary => (tg.primary, tg.onPrimary),
+      BtnKind.secondary => (tg.sunken, tg.ink),
+      BtnKind.ghost => (Colors.transparent, tg.link),
+      BtnKind.danger => (tg.grenadeSoft, tg.grenade),
     };
     final child = Row(
       mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
@@ -34,28 +49,34 @@ class Btn extends StatelessWidget {
           child: Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: T.inter, fontWeight: FontWeight.w600, fontSize: 15, height: 1.3, color: fg),
+            style: TextStyle(
+              fontFamily: T.sans,
+              fontWeight: kind == BtnKind.primary ? FontWeight.w800 : FontWeight.w700,
+              fontSize: large ? 16 : 15,
+              height: 1.3,
+              color: fg,
+            ),
           ),
         ),
       ],
     );
     return Opacity(
-      opacity: disabled ? 0.4 : 1, // disabled 40%
+      opacity: disabled ? 0.4 : 1,
       child: Material(
         color: bg,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(kRadiusCtl),
-          side: border ?? BorderSide.none,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(large ? 16 : kRadiusCtl)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed,
           overlayColor: WidgetStatePropertyAll(
-            kind == BtnKind.primary ? Colors.black.withValues(alpha: 0.12) : tg.primarySoft,
+            kind == BtnKind.primary ? Colors.black.withValues(alpha: 0.10) : tg.hairline.withValues(alpha: 0.6),
           ),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: kTap),
-            child: Padding(padding: EdgeInsets.symmetric(horizontal: kind == BtnKind.ghost ? 12 : 20, vertical: 10), child: child),
+            constraints: BoxConstraints(minHeight: large ? 56 : kTap),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: kind == BtnKind.ghost ? 12 : 20, vertical: 10),
+              child: child,
+            ),
           ),
         ),
       ),
@@ -63,25 +84,49 @@ class Btn extends StatelessWidget {
   }
 }
 
+/// Text link in the link colour (Mot de passe oublié ?, Créer un compte).
+class TextLink extends StatelessWidget {
+  const TextLink(this.label, {super.key, required this.onTap, this.bold = false});
+  final String label;
+  final VoidCallback onTap;
+  final bool bold;
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: kTap),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Align(
+              widthFactor: 1,
+              child: Text(label,
+                  style: T.small(context.tg.link).copyWith(
+                      fontSize: 14, fontWeight: bold ? FontWeight.w700 : FontWeight.w600)),
+            ),
+          ),
+        ),
+      );
+}
+
+/// Borderless card: surface on canvas, 20 px corners.
 class TgCard extends StatelessWidget {
-  const TgCard({super.key, required this.child, this.padding = const EdgeInsets.all(20), this.color, this.dashed = false});
+  const TgCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.color, this.dashed = false, this.onTap});
 
   final Widget child;
   final EdgeInsets padding;
   final Color? color;
   final bool dashed;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final tg = context.tg;
-    final box = Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: color ?? tg.surface,
-        borderRadius: BorderRadius.circular(kRadiusCard),
-        border: dashed ? null : Border.all(color: tg.hairline),
-      ),
-      child: child,
+    Widget box = Material(
+      color: color ?? tg.surface,
+      borderRadius: BorderRadius.circular(kRadiusCard),
+      clipBehavior: Clip.antiAlias,
+      child: onTap == null ? Padding(padding: padding, child: child) : InkWell(onTap: onTap, child: Padding(padding: padding, child: child)),
     );
     if (!dashed) return box;
     return CustomPaint(foregroundPainter: _DashedBorder(tg.control, kRadiusCard), child: box);
@@ -95,8 +140,7 @@ class _DashedBorder extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final path = Path()
-      ..addRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)).deflate(0.5));
+    final path = Path()..addRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)).deflate(0.5));
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -121,90 +165,326 @@ Path dashPath(Path source, double dash, double gap) {
   return out;
 }
 
-/// Mono caps label: PUISSANCE · W
+/// Small muted label: "kWh ce mois", "Puissance en direct".
 class Label extends StatelessWidget {
   const Label(this.text, {super.key, this.color});
   final String text;
   final Color? color;
   @override
-  Widget build(BuildContext context) => Text(text.toUpperCase(), style: T.label(color ?? context.tg.mute));
+  Widget build(BuildContext context) =>
+      Text(text, style: T.small(color ?? context.tg.mute).copyWith(height: 18 / 13));
 }
 
+/// Card title with an optional small note on the other side.
 class CardTitle extends StatelessWidget {
   const CardTitle(this.title, {super.key, this.aside});
   final String title;
   final String? aside;
   @override
   Widget build(BuildContext context) {
+    final tg = context.tg;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
         children: [
-          Expanded(child: Text(title, style: T.h3(context.tg.ink).copyWith(fontSize: 17))),
-          if (aside != null) Label(aside!),
+          Expanded(child: Text(title, style: T.h3(tg.ink))),
+          if (aside != null) Text(aside!, style: T.caption(tg.mute).copyWith(fontSize: 12)),
         ],
       ),
     );
   }
 }
 
-/// "estimation": every DT amount carries it (principle 03).
+/// "estimation": every DT amount carries it.
 class Estimation extends StatelessWidget {
   const Estimation({super.key});
   @override
-  Widget build(BuildContext context) => Text('estimation', style: T.small(context.tg.mute));
+  Widget build(BuildContext context) =>
+      Text(L('estimation', 'estimate', 'تقدير'), style: T.caption(context.tg.mute).copyWith(fontSize: 12));
 }
 
-enum Tone { elec, water, neutral, primary }
+enum Tone { elec, water, neutral, primary, tile, success, warning, danger }
+
+(Color, Color) toneColors(TG tg, Tone tone) => switch (tone) {
+      Tone.elec => (tg.elecSoft, tg.elecInk),
+      Tone.water => (tg.waterSoft, tg.waterInk),
+      Tone.neutral => (tg.sunken, tg.ink),
+      Tone.primary => (tg.primarySoft, tg.primary),
+      Tone.tile => (tg.tile, tg.waterInk),
+      Tone.success => (tg.successSoft, tg.success),
+      Tone.warning => (tg.harissaSoft, tg.harissa),
+      Tone.danger => (tg.grenadeSoft, tg.grenade),
+    };
 
 class IconTile extends StatelessWidget {
-  const IconTile({super.key, required this.icon, required this.tone, this.size = 36});
+  const IconTile({super.key, required this.icon, required this.tone, this.size = 44});
   final IconData icon;
   final Tone tone;
   final double size;
   @override
   Widget build(BuildContext context) {
-    final tg = context.tg;
-    final (bg, fg) = switch (tone) {
-      Tone.elec => (tg.elecSoft, tg.elecInk),
-      Tone.water => (tg.waterSoft, tg.waterInk),
-      Tone.neutral => (tg.sunken, tg.ink),
-      Tone.primary => (tg.primarySoft, tg.primary),
-    };
+    final (bg, fg) = toneColors(context.tg, tone);
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(kRadiusCtl)),
-      child: Icon(icon, size: size * 0.5, color: fg),
+      child: Icon(icon, size: size * 0.45, color: fg),
     );
   }
 }
 
-/// Page title block: mono context label above a Grotesk display title.
-class PageHeader extends StatelessWidget {
-  const PageHeader({super.key, required this.label, required this.title, this.aside});
-  final String label, title;
-  final Widget? aside;
+/// Round 44 px back button of the design (Alerts, sub-pages). Mirrored in Arabic.
+class BackBtn extends StatelessWidget {
+  const BackBtn({super.key, this.onPressed});
+  final VoidCallback? onPressed;
   @override
   Widget build(BuildContext context) {
+    final tg = context.tg;
+    return Semantics(
+      button: true,
+      label: L('Retour', 'Back', 'رجوع'),
+      excludeSemantics: true,
+      child: Material(
+        color: tg.surface,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed ?? () => Navigator.of(context).maybePop(),
+          child: SizedBox.square(
+            dimension: kTap,
+            child: Icon(isRtl ? LucideIcons300.arrowRight : LucideIcons300.arrowLeft, size: 20, color: tg.ink),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Page title: 22 px / 800, optional back button and context line, control on the other side.
+class PageHeader extends StatelessWidget {
+  const PageHeader({super.key, this.label, required this.title, this.aside, this.back = false});
+  final String? label;
+  final String title;
+  final Widget? aside;
+  final bool back;
+  @override
+  Widget build(BuildContext context) {
+    final tg = context.tg;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          if (back) ...[const BackBtn(), const SizedBox(width: 8)],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Label(label),
-                const SizedBox(height: 6),
-                Text(title, style: T.display(context.tg.ink)),
+                if (label != null) Text(label!, style: T.caption(tg.mute).copyWith(fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(title, style: T.display(tg.ink)),
               ],
             ),
           ),
           ?aside,
         ],
+      ),
+    );
+  }
+}
+
+/// Pill chip ("Vue d'ensemble · Électricité · Eau", "Tout · Alertes · Conseils").
+class TgChip extends StatelessWidget {
+  const TgChip(this.label, {super.key, required this.active, required this.onTap, this.icon});
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  final IconData? icon;
+  @override
+  Widget build(BuildContext context) {
+    final tg = context.tg;
+    final fg = active ? tg.onChipActive : tg.chip;
+    return Semantics(
+      selected: active,
+      button: true,
+      child: Material(
+        color: active ? tg.chipActive : tg.surface,
+        shape: const StadiumBorder(),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onTap,
+          child: Container(
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            alignment: Alignment.center,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              if (icon != null) ...[Icon(icon, size: 16, color: fg), const SizedBox(width: 6)],
+              Text(label,
+                  style: T.small(fg).copyWith(fontSize: 14, fontWeight: active ? FontWeight.w700 : FontWeight.w600)),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Two-to-four option switch in a pill track ("Jour | Mois").
+class Segmented<V> extends StatelessWidget {
+  const Segmented({super.key, required this.value, required this.options, required this.onChanged, this.track});
+  final V value;
+  final List<(V, String, IconData?)> options;
+  final ValueChanged<V> onChanged;
+
+  /// Track colour: surface by default (sunken inside a card).
+  final Color? track;
+
+  @override
+  Widget build(BuildContext context) {
+    final tg = context.tg;
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: track ?? tg.surface, borderRadius: BorderRadius.circular(999)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final (v, label, icon) in options)
+            Semantics(
+              selected: v == value,
+              button: true,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => onChanged(v),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: v == value ? tg.chipActive : Colors.transparent,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    if (icon != null) ...[
+                      Icon(icon, size: 15, color: v == value ? tg.onChipActive : tg.chip),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(label,
+                        style: T.small(v == value ? tg.onChipActive : tg.chip)
+                            .copyWith(fontWeight: v == value ? FontWeight.w700 : FontWeight.w600)),
+                  ]),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Section title above a group of rows (Settings design).
+class SectionLabel extends StatelessWidget {
+  const SectionLabel(this.text, {super.key});
+  final String text;
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(4, 16, 4, 6),
+        child: Text(text, style: T.label(context.tg.mute)),
+      );
+}
+
+/// A rounded group of 48 px rows separated by hairlines.
+class ListGroup extends StatelessWidget {
+  const ListGroup({super.key, required this.children});
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) {
+    final tg = context.tg;
+    return Material(
+      color: tg.surface,
+      borderRadius: BorderRadius.circular(kRadiusCard),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0) Divider(height: 1, thickness: 1, color: tg.hairline),
+          children[i],
+        ],
+      ]),
+    );
+  }
+}
+
+class ListRow extends StatelessWidget {
+  const ListRow({
+    super.key,
+    required this.label,
+    this.value,
+    this.valueWidget,
+    this.onTap,
+    this.icon,
+    this.danger = false,
+    this.chevron = true,
+  });
+  final String label;
+  final String? value;
+  final Widget? valueWidget;
+  final VoidCallback? onTap;
+  final IconData? icon;
+  final bool danger, chevron;
+
+  @override
+  Widget build(BuildContext context) {
+    final tg = context.tg;
+    final row = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 48),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(children: [
+          if (icon != null) ...[Icon(icon, size: 20, color: danger ? tg.grenade : tg.mute), const SizedBox(width: 12)],
+          Expanded(
+            child: Text(label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: T.small(danger ? tg.grenade : tg.ink).copyWith(fontSize: 14, fontWeight: FontWeight.w600)),
+          ),
+          ?valueWidget,
+          if (value != null) Text(value!, style: T.small(tg.mute)),
+          if (onTap != null && chevron && !danger) ...[
+            const SizedBox(width: 4),
+            Icon(isRtl ? LucideIcons300.chevronLeft : LucideIcons300.chevronRight, size: 18, color: tg.mute),
+          ],
+        ]),
+      ),
+    );
+    return onTap == null ? row : InkWell(onTap: onTap, child: row);
+  }
+}
+
+/// Thin progress bar (tranche rows, consumers, challenges). Fills from the start side.
+class ProgressBar extends StatelessWidget {
+  const ProgressBar({super.key, required this.pct, this.color, this.height = 8});
+  final double pct;
+  final Color? color;
+  final double height;
+  @override
+  Widget build(BuildContext context) {
+    final tg = context.tg;
+    final v = (pct.isNaN ? 0.0 : pct).clamp(0.0, 100.0) / 100;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: SizedBox(
+        height: height,
+        child: Stack(children: [
+          Positioned.fill(child: ColoredBox(color: tg.barTrack)),
+          FractionallySizedBox(
+            alignment: AlignmentDirectional.centerStart,
+            widthFactor: v,
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: color ?? tg.bar, borderRadius: BorderRadius.circular(999)),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ]),
       ),
     );
   }
@@ -216,7 +496,7 @@ class Skeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         height: height,
-        decoration: BoxDecoration(color: context.tg.sunken, borderRadius: BorderRadius.circular(kRadiusCard)),
+        decoration: BoxDecoration(color: context.tg.surface, borderRadius: BorderRadius.circular(kRadiusCard)),
       );
 }
 
@@ -227,60 +507,7 @@ class Gap extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(width: size, height: size);
 }
 
-class Segmented<V> extends StatelessWidget {
-  const Segmented({super.key, required this.value, required this.options, required this.onChanged});
-  final V value;
-  final List<(V, String, IconData)> options;
-  final ValueChanged<V> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final tg = context.tg;
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: tg.sunken,
-        borderRadius: BorderRadius.circular(kRadiusCtl),
-        border: Border.all(color: tg.hairline),
-      ),
-      child: Row(
-        children: [
-          for (final (v, label, icon) in options)
-            Expanded(
-              child: Semantics(
-                selected: v == value,
-                button: true,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => onChanged(v),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: v == value ? tg.surface : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: v == value ? tg.hairline : Colors.transparent),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(icon, size: 16, color: v == value ? tg.ink : tg.mute),
-                        const SizedBox(width: 6),
-                        Text(label,
-                            style: T.small(v == value ? tg.ink : tg.mute).copyWith(fontWeight: FontWeight.w500)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Key/value row in Mono for measures.
+/// Key/value row for measures.
 class DataRow2 extends StatelessWidget {
   const DataRow2(this.k, this.v, {super.key});
   final String k, v;

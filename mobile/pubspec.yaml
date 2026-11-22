@@ -56,22 +56,22 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Charter fonts, bundled so the app works offline at the venue (SIL OFL, see assets/fonts).
+  # Design fonts (DESIGN.md), bundled so the app works offline (SIL OFL, see assets/fonts).
+  # Plus Jakarta Sans: static weights cut from the variable font of google/fonts.
+  # Arabic falls back to Android's system Noto Arabic.
   fonts:
-    - family: SpaceGrotesk
+    - family: PlusJakartaSans
       fonts:
-        - asset: assets/fonts/SpaceGrotesk_500Medium.ttf
-          weight: 500
-        - asset: assets/fonts/SpaceGrotesk_600SemiBold.ttf
-          weight: 600
-    - family: Inter
-      fonts:
-        - asset: assets/fonts/Inter_400Regular.ttf
+        - asset: assets/fonts/PlusJakartaSans_400.ttf
           weight: 400
-        - asset: assets/fonts/Inter_500Medium.ttf
+        - asset: assets/fonts/PlusJakartaSans_500.ttf
           weight: 500
-        - asset: assets/fonts/Inter_600SemiBold.ttf
+        - asset: assets/fonts/PlusJakartaSans_600.ttf
           weight: 600
+        - asset: assets/fonts/PlusJakartaSans_700.ttf
+          weight: 700
+        - asset: assets/fonts/PlusJakartaSans_800.ttf
+          weight: 800
     - family: JetBrainsMono
       fonts:
         - asset: assets/fonts/JetBrainsMono_400Regular.ttf

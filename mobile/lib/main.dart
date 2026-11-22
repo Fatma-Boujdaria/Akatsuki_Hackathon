@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'state/app_state.dart';
 import 'theme.dart';
+import 'util/i18n.dart';
 import 'screens/login_screen.dart';
 import 'screens/shell.dart';
 import 'widgets/logo.dart';
@@ -29,12 +30,21 @@ class TrancheGuardApp extends StatelessWidget {
       child: ListenableBuilder(
         listenable: state,
         builder: (context, _) => MaterialApp(
+          // Keyed by language: every L(...) text is rebuilt when it changes.
+          key: ValueKey(state.language),
           title: 'Tranche Guard',
           debugShowCheckedModeBanner: false,
           theme: buildTheme(TG.light),
           darkTheme: buildTheme(TG.dark),
           themeMode: state.themeMode,
-          locale: const Locale('fr', 'TN'),
+          // ar-TN lays the app out right to left (Directionality comes from the locale).
+          locale: switch (state.language) {
+            Lang.en => const Locale('en', 'GB'),
+            Lang.ar => const Locale('ar', 'TN'),
+            Lang.fr => const Locale('fr', 'TN'),
+          },
+          supportedLocales: const [Locale('fr', 'TN'), Locale('en', 'GB'), Locale('ar', 'TN')],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
           builder: (context, child) {
             final tg = context.tg;
             // Status and navigation bars follow the canvas, light or dark.

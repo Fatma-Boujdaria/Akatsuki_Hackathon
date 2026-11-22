@@ -4,25 +4,20 @@ import 'package:material_ui/material_ui.dart';
 
 import '../theme.dart';
 
-// Foyer, "toit-garde" (charter boards 02 and 11): a Bahr house holding three white
-// bars (the STEG tranches) under a detached Chams roof rail. Roof pitch 40°, only
-// the base of the house is rounded, the tallest bar stays one bar-width under the roof.
+// Shield logo of the "App Screens" design (same as frontend/src/components/Logo.tsx):
+// four rising bars (Bahr, Ciel, Sable, Chams), the STEG tranches, clipped by a guard's
+// shield. Wordmark "Tranche" + "Guard" in the accent colour.
 
 enum LogoState { normal, near, crossed, loading }
 
-const _harissa = Color(0xFFC2401B);
-
 class LogoMark extends StatefulWidget {
-  const LogoMark({super.key, this.size = 32, this.state = LogoState.normal, this.reversed = false});
+  const LogoMark({super.key, this.size = 32, this.state = LogoState.normal});
 
   final double size;
 
-  /// Living logo, app header only: near -> tallest bar Harissa and grows,
-  /// crossed -> it breaks through the roof, loading -> bars rise in turn.
+  /// Living logo: near -> the tallest bar pulses, crossed -> it turns red,
+  /// loading -> the bars rise in turn.
   final LogoState state;
-
-  /// On Bahr grounds: the house turns white and the bars Bahr.
-  final bool reversed;
 
   @override
   State<LogoMark> createState() => _LogoMarkState();
@@ -44,8 +39,9 @@ class _LogoMarkState extends State<LogoMark> with SingleTickerProviderStateMixin
   }
 
   void _sync() {
-    if (widget.state == LogoState.loading) {
-      _ctrl ??= AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat();
+    final animated = widget.state == LogoState.loading || widget.state == LogoState.near;
+    if (animated) {
+      _ctrl ??= AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
     } else {
       _ctrl?.dispose();
       _ctrl = null;
@@ -60,91 +56,88 @@ class _LogoMarkState extends State<LogoMark> with SingleTickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    // Off with reduced motion.
+    // Static with reduced motion.
     final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final grenade = context.tg.grenade;
     final ctrl = _ctrl;
     Widget paint(double t) => CustomPaint(
           size: Size.square(widget.size),
-          painter: _LogoPainter(state: widget.state, reversed: widget.reversed, t: reduce ? -1 : t),
+          painter: _LogoPainter(state: widget.state, t: reduce ? -1 : t, grenade: grenade),
         );
     return Semantics(
       label: 'Tranche Guard',
       image: true,
-      child: ctrl == null ? paint(-1) : AnimatedBuilder(animation: ctrl, builder: (_, _) => paint(ctrl.value)),
+      child: ctrl == null || reduce ? paint(-1) : AnimatedBuilder(animation: ctrl, builder: (_, _) => paint(ctrl.value)),
     );
   }
 }
 
 class _LogoPainter extends CustomPainter {
-  _LogoPainter({required this.state, required this.reversed, required this.t});
+  _LogoPainter({required this.state, required this.t, required this.grenade});
 
   final LogoState state;
-  final bool reversed;
-  final double t; // animation phase 0–1, -1 = static
+  final double t; // animation phase 0-1, -1 = static
+  final Color grenade;
+
+  static final Path _shield = Path()
+    ..moveTo(50, 4)
+    ..lineTo(90, 18)
+    ..lineTo(90, 48)
+    ..cubicTo(90, 74, 72, 90, 50, 97)
+    ..cubicTo(28, 90, 10, 74, 10, 48)
+    ..lineTo(10, 18)
+    ..close();
+
+  static const _bars = [(10.0, 62.0, 18.0), (30.0, 46.0, 18.0), (50.0, 30.0, 18.0), (70.0, 0.0, 20.0)];
 
   @override
   void paint(Canvas canvas, Size size) {
-    final s = size.width / 64;
-    canvas.scale(s);
-
-    final house = reversed ? Colors.white : TG.bahr;
-    final bars = reversed ? TG.bahr : Colors.white;
-
-    // Roof rail: the guard, held one gap away from the house
-    final roof = Path()
-      ..moveTo(8, 30)
-      ..lineTo(32, 10)
-      ..lineTo(56, 30);
-    canvas.drawPath(
-      roof,
-      Paint()
-        ..color = TG.chams
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 5.5
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
-
-    // House: pointed top, rounded base corners only
-    final body = Path()
-      ..moveTo(14, 33)
-      ..lineTo(32, 18)
-      ..lineTo(50, 33)
-      ..lineTo(50, 50)
-      ..arcToPoint(const Offset(46, 54), radius: const Radius.circular(4))
-      ..lineTo(18, 54)
-      ..arcToPoint(const Offset(14, 50), radius: const Radius.circular(4))
-      ..close();
-    canvas.drawPath(body, Paint()..color = house);
-
-    // Three tranches
-    double rise(int i) {
-      if (t < 0) return 1;
-      final phase = (t - i * 0.16) % 1.0;
-      return 0.35 + 0.65 * (0.5 - 0.5 * math.cos(phase * 2 * math.pi));
+    canvas.scale(size.width / 100);
+    canvas.clipPath(_shield);
+    final colors = [TG.bahr, TG.ciel, TG.sable, state == LogoState.crossed ? grenade : TG.chams];
+    for (var i = 0; i < _bars.length; i++) {
+      final (x, y, w) = _bars[i];
+      var top = y;
+      var opacity = 1.0;
+      if (t >= 0 && state == LogoState.loading) {
+        // Bars rise in turn, 0.15 s apart.
+        final phase = (t - i * 0.125) % 1.0;
+        final k = 0.35 + 0.65 * (0.5 - 0.5 * math.cos(phase * 2 * math.pi));
+        top = 102 - (102 - y) * k;
+      } else if (t >= 0 && state == LogoState.near && i == 3) {
+        opacity = 0.55 + 0.45 * (0.5 + 0.5 * math.cos(t * 2 * math.pi));
+      }
+      canvas.drawRect(Rect.fromLTWH(x, top, w, 102 - top), Paint()..color = colors[i].withValues(alpha: opacity));
     }
-
-    void bar(double x, double top, Color c, double k) {
-      final h = (50 - top) * k;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromLTWH(x, 50 - h, 5.5, h), const Radius.circular(1.2)),
-        Paint()..color = c,
-      );
-    }
-
-    final loading = state == LogoState.loading;
-    bar(20.5, 42, bars, loading ? rise(0) : 1);
-    bar(29.25, 37, bars, loading ? rise(1) : 1);
-    final tallTop = switch (state) { LogoState.near => 29.0, LogoState.crossed => 8.0, _ => 32.0 };
-    final tallColor = (state == LogoState.near || state == LogoState.crossed) ? _harissa : bars;
-    bar(38, tallTop, tallColor, loading ? rise(2) : 1);
   }
 
   @override
-  bool shouldRepaint(_LogoPainter old) => old.state != state || old.t != t || old.reversed != reversed;
+  bool shouldRepaint(_LogoPainter old) => old.state != state || old.t != t || old.grenade != grenade;
 }
 
-/// Horizontal lockup: mark + "Tranche Guard" in Grotesk.
+/// "TrancheGuard", always left to right.
+class Wordmark extends StatelessWidget {
+  const Wordmark({super.key, this.fontSize = 19});
+  final double fontSize;
+  @override
+  Widget build(BuildContext context) {
+    final tg = context.tg;
+    final style = TextStyle(
+      fontFamily: T.sans,
+      fontWeight: FontWeight.w800,
+      fontSize: fontSize,
+      letterSpacing: fontSize >= 28 ? -1 : -0.5,
+      height: 1.1,
+      color: tg.ink,
+    );
+    return Text.rich(
+      TextSpan(text: 'Tranche', style: style, children: [TextSpan(text: 'Guard', style: style.copyWith(color: tg.brandAccent))]),
+      textDirection: TextDirection.ltr,
+    );
+  }
+}
+
+/// Horizontal lockup: mark + wordmark.
 class Logo extends StatelessWidget {
   const Logo({super.key, this.size = 30, this.state = LogoState.normal, this.fontSize = 19});
 
@@ -156,19 +149,11 @@ class Logo extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
+      textDirection: TextDirection.ltr,
       children: [
         LogoMark(size: size, state: state),
         const SizedBox(width: 10),
-        Text(
-          'Tranche Guard',
-          style: TextStyle(
-            fontFamily: T.grotesk,
-            fontWeight: FontWeight.w600,
-            fontSize: fontSize,
-            letterSpacing: -0.3,
-            color: context.tg.ink,
-          ),
-        ),
+        Wordmark(fontSize: fontSize),
       ],
     );
   }
