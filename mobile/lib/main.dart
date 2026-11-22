@@ -7,6 +7,7 @@ import 'state/app_state.dart';
 import 'theme.dart';
 import 'util/i18n.dart';
 import 'screens/login_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/shell.dart';
 import 'widgets/logo.dart';
 import 'widgets/ui.dart';
@@ -73,15 +74,34 @@ class _Gate extends StatelessWidget {
       return const Scaffold(body: Center(child: LogoMark(size: 56, state: LogoState.loading)));
     }
     if (!app.loggedIn) return const LoginScreen();
-    if (app.dashboard == null && app.dashboardErrorStatus == 404) return _NoHousehold(message: app.dashboardError ?? '');
+    if (!app.householdsLoaded) {
+      return const Scaffold(body: Center(child: LogoMark(size: 56, state: LogoState.loading)));
+    }
+    if (app.households.isEmpty && app.householdsError != null) {
+      return _Problem(message: app.householdsError!, onRetry: app.refreshHouseholds);
+    }
+    // No home yet: first-time setup (an admin without a home uses the web admin panel).
+    if (app.onboarding || app.households.isEmpty) {
+      if (app.user?.isAdmin == true && !app.onboarding) {
+        return _Problem(
+          message: L(
+            'Ce compte administrateur n\'a pas de foyer. Le panneau d\'administration est sur le site web.',
+            'This admin account has no home. The admin panel is on the website.',
+            'الحساب الإداري هذا ما عندوش دار. لوحة الإدارة في الموقع.',
+          ),
+        );
+      }
+      return const OnboardingScreen();
+    }
     return const Shell();
   }
 }
 
-/// An account without a household (e.g. the admin created by the seed script).
-class _NoHousehold extends StatelessWidget {
-  const _NoHousehold({required this.message});
+/// Homes could not be loaded, or an admin account without a home.
+class _Problem extends StatelessWidget {
+  const _Problem({required this.message, this.onRetry});
   final String message;
+  final Future<void> Function()? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -93,20 +113,17 @@ class _NoHousehold extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: TgCard(
+              padding: const EdgeInsets.all(24),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 const Logo(size: 32),
                 const SizedBox(height: 20),
-                Text(message, textAlign: TextAlign.center, style: T.h2(tg.ink)),
-                const SizedBox(height: 8),
-                Text(
-                  app.user?.isAdmin == true
-                      ? 'Ce compte administrateur n\'a pas de foyer. Connecte-toi avec le compte d\'un foyer pour voir le tableau de bord.'
-                      : 'Ton compte n\'est lié à aucun foyer. Demande à l\'administrateur de t\'en créer un.',
-                  textAlign: TextAlign.center,
-                  style: T.body(tg.body),
-                ),
+                Text(message, textAlign: TextAlign.center, style: T.body(tg.body)),
                 const SizedBox(height: 20),
-                Btn('Se déconnecter', kind: BtnKind.secondary, icon: LucideIcons300.logOut, onPressed: app.logout),
+                Wrap(spacing: 10, runSpacing: 10, alignment: WrapAlignment.center, children: [
+                  if (onRetry != null)
+                    Btn(L('Réessayer', 'Try again', 'عاود'), icon: LucideIcons300.refreshCw, onPressed: onRetry),
+                  Btn(L('Se déconnecter', 'Log out', 'اخرج'), kind: BtnKind.secondary, icon: LucideIcons300.logOut, onPressed: app.logout),
+                ]),
               ]),
             ),
           ),

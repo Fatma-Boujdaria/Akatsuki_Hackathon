@@ -14,7 +14,7 @@ checked on the USB phone (SM A175F) with `adb reverse tcp:8000 tcp:8000`.
       forgot / reset password
       | verify: on phone, register a test account with the on-screen demo code, reset its password
       | files: screens/auth/*
-- [ ] 4. Homes: list + switcher in the top bar, onboarding when there is no home
+- [x] 4. Homes: list + switcher in the top bar, onboarding when there is no home
       (home details, appliances, box or simulator), Homes screen (add, edit, delete)
       | verify: test account finishes onboarding; demo account switches between two homes
       | files: state/app_state.dart, screens/onboarding_screen.dart, screens/households_screen.dart, screens/shell.dart

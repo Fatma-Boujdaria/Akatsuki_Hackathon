@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../util/tranche.dart';
+import '../widgets/household_switcher.dart';
 import '../widgets/logo.dart';
 import '../widgets/status.dart';
 import 'alerts_screen.dart';
@@ -67,7 +68,11 @@ class ShellState extends State<Shell> {
         titleSpacing: 16,
         toolbarHeight: 60,
         shape: Border(bottom: BorderSide(color: tg.hairline)),
-        title: GestureDetector(onTap: () => go(0), child: Logo(size: 30, state: logoState)),
+        title: Row(children: [
+          LogoMark(size: 28, state: logoState),
+          const SizedBox(width: 10),
+          const Flexible(child: HouseholdSwitcher()),
+        ]),
         actions: [
           IconButton(
             tooltip: 'Réglages',
@@ -86,7 +91,7 @@ class ShellState extends State<Shell> {
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
               child: Pill('Connexion au serveur perdue', tone: PillTone.broken, icon: const Icon(LucideIcons300.wifiOff)),
             ),
-          Expanded(child: KeyedSubtree(key: ValueKey(_index), child: body)),
+          Expanded(child: KeyedSubtree(key: ValueKey('$_index-${app.householdEpoch}'), child: body)),
         ],
       ),
       bottomNavigationBar: DecoratedBox(

@@ -23,8 +23,12 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     api = Api(
       baseUrl: _prefs.getString('server') ?? kDefaultApiUrl,
       token: _prefs.getString('token'),
+      householdId: _prefs.getString('household'),
       onUnauthorized: _onUnauthorized,
-    );
+    )..onHouseholdGone = () {
+        _prefs.remove('household');
+        refreshHouseholds();
+      };
     language = Lang.parse(_prefs.getString('lang'));
     setCurrentLang(language);
     themeMode = switch (_prefs.getString('theme')) {
@@ -61,8 +65,32 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   bool _inFlight = false;
   bool _foreground = true;
 
+  /// The account's homes; the chosen one is sent as X-Household-Id.
+  List<Household> households = [];
+  bool householdsLoaded = false;
+  String? householdsError;
+
+  /// Changes when the shown home changes: screens keyed by it reload their data.
+  int householdEpoch = 0;
+
+  /// First-time setup in progress: the gate keeps it on screen until its last step,
+  /// even once the new home exists.
+  bool onboarding = false;
+  void setOnboarding(bool v) {
+    if (v == onboarding) return;
+    onboarding = v;
+    notifyListeners();
+  }
+
   String get server => api.baseUrl;
   bool get loggedIn => user != null;
+
+  Household? get currentHousehold {
+    for (final h in households) {
+      if (h.id == api.householdId) return h;
+    }
+    return households.isEmpty ? null : households.first;
+  }
 
   TrancheView? get tranche => dashboard == null
       ? null
@@ -78,6 +106,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
     try {
       _adoptUser(await api.me());
+      await refreshHouseholds();
       _startPolling();
     } catch (_) {
       // Expired token or server unreachable: back to the login screen.
@@ -111,8 +140,49 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
       _prefs.remove('token');
     }
     _adoptUser(u);
-    _startPolling();
+    householdsLoaded = false;
     notifyListeners();
+    refreshHouseholds().then((_) => _startPolling());
+  }
+
+  /// Loads the homes and keeps the saved choice when it still exists (else the first one).
+  Future<List<Household>> refreshHouseholds() async {
+    try {
+      final list = await api.households();
+      households = list;
+      householdsError = null;
+      final saved = api.householdId;
+      final valid = list.any((h) => h.id == saved) ? saved : (list.isEmpty ? null : list.first.id);
+      if (valid != api.householdId) householdEpoch++;
+      api.householdId = valid;
+      if (valid == null) {
+        _prefs.remove('household');
+      } else {
+        _prefs.setString('household', valid);
+      }
+    } on ApiException catch (e) {
+      householdsError = e.message;
+    } catch (e) {
+      householdsError = '$e';
+    } finally {
+      householdsLoaded = true;
+      notifyListeners();
+    }
+    return households;
+  }
+
+  /// Show another home: every screen reloads for it.
+  void switchHousehold(String id) {
+    if (id == api.householdId) return;
+    api.householdId = id;
+    _prefs.setString('household', id);
+    householdEpoch++;
+    dashboard = null;
+    settings = null;
+    dashboardError = null;
+    dashboardErrorStatus = null;
+    notifyListeners();
+    _startPolling();
   }
 
   /// The account's language wins over the phone's last choice.
@@ -142,6 +212,8 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     settings = null;
     dashboardError = null;
     dashboardErrorStatus = null;
+    households = [];
+    householdsLoaded = false;
     _prefs.remove('token');
     notifyListeners();
   }
@@ -183,7 +255,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
 
   void _startPolling() {
     _stopPolling();
-    if (!_foreground || user == null) return;
+    if (!_foreground || user == null || api.householdId == null) return;
     refreshDashboard();
     refreshSettings();
     _timer = Timer.periodic(kDashboardPoll, (_) => refreshDashboard());
@@ -206,17 +278,22 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> refreshDashboard() async {
-    if (_inFlight || user == null) return;
+    if (_inFlight || user == null || api.householdId == null) return;
     _inFlight = true;
+    final epoch = householdEpoch;
     try {
-      dashboard = await api.dashboard();
+      final d = await api.dashboard();
+      if (epoch != householdEpoch) return; // answer for the home shown before a switch
+      dashboard = d;
       dashboardAt = DateTime.now();
       dashboardError = null;
       dashboardErrorStatus = null;
     } on ApiException catch (e) {
+      if (epoch != householdEpoch) return;
       dashboardError = e.message;
       dashboardErrorStatus = e.status;
     } catch (e) {
+      if (epoch != householdEpoch) return;
       dashboardError = '$e';
       dashboardErrorStatus = null;
     } finally {
@@ -226,8 +303,11 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> refreshSettings() async {
+    final epoch = householdEpoch;
     try {
-      settings = await api.settings();
+      final s = await api.settings();
+      if (epoch != householdEpoch) return;
+      settings = s;
       notifyListeners();
     } catch (_) {
       // The settings screen shows its own error.
