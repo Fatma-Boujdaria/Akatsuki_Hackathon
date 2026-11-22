@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Cpu, Droplet, Eye, EyeOff, Pause, Play, Send, TriangleAlert, Zap } from "lucide-react";
 import { useData } from "../lib/data";
@@ -165,9 +165,24 @@ function ConnectionCard() {
   );
 }
 
+/** The device of the home shown in the app that this page should send as. */
+function homeSender(s: { active_device_id: string | null; devices: { id: string; kind: string }[] } | null | undefined) {
+  if (!s) return null;
+  const active = s.devices.find((d) => d.id === s.active_device_id);
+  return (active ?? s.devices.find((d) => d.kind === "simulator") ?? s.devices[0])?.id ?? null;
+}
+
 export function EspPanelPage() {
   const esp = useVirtualEsp();
   const { dashboard, tranche, settings } = useData();
+  const homeIds = settings.data?.devices.map((d) => d.id) ?? [];
+  const sender = homeSender(settings.data);
+  const otherHome = !!settings.data && !homeIds.includes(esp.deviceId);
+  // The device id is remembered in this browser: after switching home or account it may
+  // belong to another home, which then gets the kWh while this page shows 0.
+  useEffect(() => {
+    if (otherHome && sender && !esp.running) esp.setDeviceId(sender);
+  }, [otherHome, sender, esp.running]); // eslint-disable-line react-hooks/exhaustive-deps
   const nowMs = useNow(1000);
   const c = esp.controls;
   const e = dashboard.data?.electricity;
@@ -196,6 +211,16 @@ export function EspPanelPage() {
           )
         }
       />
+
+      {otherHome && esp.running && (
+        <Banner tone="headsup" role="alert" className="mb-4">
+          {L(
+            `Ce boîtier envoie en tant que ${esp.deviceId}, qui n'est pas un appareil de ce foyer : ses kWh vont ailleurs. Arrête-le, il reprendra avec ${sender ?? "l'appareil du foyer"}.`,
+            `This box sends as ${esp.deviceId}, which is not a device of this home: its kWh go elsewhere. Stop it and it will switch to ${sender ?? "the home's device"}.`,
+            `البواطة تبعث باسم ${esp.deviceId}، موش جهاز متاع الدار هذي: الـkWh تمشي لبلاصة أخرى. وقّفها وترجع تبعث بـ${sender ?? "جهاز الدار"}.`,
+          )}
+        </Banner>
+      )}
 
       <div className="grid grid-cols-1 items-start gap-4 sm:gap-5 lg:grid-cols-12">
         {/* On a phone the key and Start come first */}

@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cartheco test</title>
+<link rel="icon" href="/favicon.svg">
+<style>
+  :root { --canvas:#0D1820; --surface:#16273A; --sunken:#1B2F44; --line:#24384C; --mute:#9FB1C2; --body:#D5E1EC; --ink:#fff;
+          --primary:#FEBD19; --on-primary:#0D1820; --water:#76B9FF; --ok:#3DDC97; --bad:#FF7A7A; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--canvas); color:var(--body); font:15px/1.45 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:20px 16px 48px; display:grid; gap:14px; }
+  h1 { color:var(--ink); font-size:22px; margin:4px 0 0; }
+  h2 { color:var(--ink); font-size:16px; margin:0 0 12px; }
+  h3 { color:var(--ink); font-size:14px; margin:18px 0 8px; }
+  section { background:var(--surface); border-radius:16px; padding:16px; }
+  label { display:block; font-size:13px; color:var(--mute); margin-bottom:4px; }
+  input, select { width:100%; min-height:42px; padding:8px 10px; border-radius:10px; border:1px solid var(--line);
+                  background:var(--sunken); color:var(--ink); font:inherit; }
+  input[type=range] { padding:0; border:0; background:none; min-height:36px; accent-color:var(--primary); cursor:pointer; }
+  label output { float:right; color:var(--ink); font-weight:700; font-variant-numeric:tabular-nums; }
+  input[type=checkbox] { width:20px; min-height:20px; accent-color:var(--primary); margin:0; }
+  .check { display:flex; align-items:center; gap:10px; min-height:40px; color:var(--body); font-size:14px; margin:0; cursor:pointer; }
+  .row { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; }
+  .row.wide { grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); }
+  .inline { display:flex; gap:8px; align-items:flex-end; }
+  .inline > div { flex:1; }
+  .btns { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  button { min-height:42px; padding:0 16px; border:0; border-radius:999px; background:var(--sunken); color:var(--ink);
+           font:600 14px/1 inherit; cursor:pointer; white-space:nowrap; }
+  button.main { background:var(--primary); color:var(--on-primary); }
+  button:disabled { opacity:.45; cursor:default; }
+  .big { font-size:30px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; }
+  .stat span { display:block; font-size:13px; color:var(--mute); }
+  .stat b { color:var(--ink); font-size:18px; font-variant-numeric:tabular-nums; }
+  .bar { height:10px; background:var(--line); border-radius:99px; overflow:hidden; margin:10px 0 4px; }
+  .bar i { display:block; height:100%; width:0; background:var(--water); transition:width .3s; }
+  #log { font:12px/1.6 ui-monospace, Consolas, monospace; max-height:200px; overflow:auto; margin:0; padding:0; list-style:none; }
+  .ok { color:var(--body); } .err { color:var(--bad); }
+  .hint { font-size:13px; color:var(--mute); margin:8px 0 0; }
+  #status { font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Cartheco · test du compteur</h1>
+
+  <section>
+    <h2>1. Compte et foyer</h2>
+    <div class="row">
+      <div><label for="email">E-mail</label><input id="email" value="demo@trancheguard.tn" autocomplete="username"></div>
+      <div><label for="pw">Mot de passe</label><input id="pw" type="password" value="demo1234" autocomplete="current-password"></div>
+    </div>
+    <div class="btns"><button class="main" id="login">Se connecter</button></div>
+    <div class="row" style="margin-top:12px">
+      <div><label for="home">Foyer</label><select id="home" disabled></select></div>
+      <div><label for="device">Appareil (envoie en tant que)</label><input id="device" readonly></div>
+    </div>
+    <p class="hint" id="status">Pas connecté.</p>
+  </section>
+
+  <section>
+    <h2>2. Boîtier</h2>
+    <div class="row">
+      <div><label for="key">Clé DEVICE_API_KEY (dev.cmd key la copie)</label><input id="key" type="password" autocomplete="off"></div>
+      <div><label for="interval">Envoi toutes les</label>
+        <select id="interval"><option value="2">2 s</option><option value="5" selected>5 s (comme l'ESP32)</option><option value="10">10 s</option><option value="30">30 s</option></select></div>
+    </div>
+    <div class="btns">
+      <button class="main" id="start" disabled>Démarrer</button>
+      <button id="stop" disabled>Arrêter</button>
+      <button id="once" disabled>Envoyer une fois</button>
+    </div>
+    <p class="hint">Arrête le simulateur Python (fenêtre « Cartheco simulator ») s'il envoie pour le même foyer, sinon les deux se mélangent.</p>
+
+    <h3>Électricité</h3>
+    <div class="row">
+      <div><label for="power">Puissance</label><input id="power" type="range" min="0" max="23000" step="10" value="450"></div>
+      <div><label for="voltage">Tension</label><input id="voltage" type="range" min="0" max="300" step="0.1" value="230"></div>
+      <div><label for="pf">Facteur de puissance</label><input id="pf" type="range" min="0" max="1" step="0.01" value="0.93"></div>
+      <div><label for="freq">Fréquence</label><input id="freq" type="range" min="45" max="65" step="0.01" value="50"></div>
+    </div>
+    <div class="btns">
+      <button data-w="120">Veille 120 W</button><button data-w="650">Soirée 650 W</button><button data-w="1350">Clim 1 350 W</button>
+      <button data-w="2100">Chauffe-eau 2 100 W</button><button data-w="3000">Four 3 000 W</button><button data-w="6500">Tout 6 500 W</button>
+    </div>
+    <label class="check" style="margin-top:8px"><input type="checkbox" id="noise" checked> Variation naturelle (± 3 %)</label>
+
+    <h3>Eau</h3>
+    <div class="row">
+      <div><label for="flow">Débit</label><input id="flow" type="range" min="0" max="60" step="0.1" value="0"></div>
+      <div><label for="calib">Impulsions par litre</label><input id="calib" type="range" min="100" max="2000" step="1" value="450"></div>
+    </div>
+    <div class="btns">
+      <button data-f="0">Fermé</button><button data-f="0.4">Fuite 0,4</button><button data-f="4">Robinet 4</button>
+      <button data-f="8">Douche 8</button><button data-f="12">Bain 12</button>
+    </div>
+
+    <h3>Total du mois</h3>
+    <div class="row wide">
+      <div class="inline"><div><label for="goKwh">Amener l'électricité à</label><input id="goKwh" type="range" min="0" max="1000" step="1" value="0"></div>
+        <button id="goKwhBtn" disabled>Appliquer</button></div>
+      <div class="inline"><div><label for="addKwh">Ajouter</label><input id="addKwh" type="range" min="1" max="300" step="1" value="10"></div>
+        <button id="addKwhBtn" disabled>Ajouter</button></div>
+      <div class="inline"><div><label for="goM3">Amener l'eau à</label><input id="goM3" type="range" min="0" max="200" step="0.5" value="0"></div>
+        <button id="goM3Btn" disabled>Appliquer</button></div>
+      <div class="inline"><div><label for="addL">Ajouter de l'eau</label><input id="addL" type="range" min="10" max="5000" step="10" value="100"></div>
+        <button id="addLBtn" disabled>Ajouter</button></div>
+    </div>
+    <div class="btns">
+      <button id="toMargin" disabled>Entrer dans la marge d'alerte</button>
+      <button id="toCross" disabled>Dépasser la tranche</button>
+    </div>
+    <p class="hint">Le total ne peut que monter : l'API additionne ce que le compteur gagne, et un compteur ne recule jamais.</p>
+
+    <h3>Pannes et pics</h3>
+    <label class="check"><input type="checkbox" id="elecFault"> Capteur d'électricité muet (electricity: null)</label>
+    <label class="check"><input type="checkbox" id="waterFault"> Capteur d'eau muet (water: null)</label>
+    <label class="check"><input type="checkbox" id="badSignal"> Signal peu fiable (signal_ok: false)</label>
+    <div class="row" style="margin-top:8px">
+      <div class="inline"><div><label for="spikeW">Pic en plus</label><input id="spikeW" type="range" min="0" max="23000" step="100" value="3500"></div>
+        <div><label for="spikeS">Pendant</label><input id="spikeS" type="range" min="1" max="300" step="1" value="30"></div>
+        <button id="spikeBtn" disabled>Lancer</button></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Ce que l'API calcule</h2>
+    <div class="big" id="month">-</div>
+    <div class="bar"><i id="fill"></i></div>
+    <div class="hint" id="tranche" style="margin:0 0 12px">-</div>
+    <div class="stats">
+      <div class="stat"><span>Puissance reçue</span><b id="live">-</b></div>
+      <div class="stat"><span>Facture à date</span><b id="bill">-</b></div>
+      <div class="stat"><span>Prévision du mois</span><b id="forecast">-</b></div>
+      <div class="stat"><span>Prochain kWh</span><b id="next">-</b></div>
+      <div class="stat"><span>Eau ce mois</span><b id="water">-</b></div>
+      <div class="stat"><span>Compteurs envoyés</span><b id="counter">-</b></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Journal</h2>
+    <ul id="log"></ul>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n, d = 1) => Number(n).toLocaleString("fr-FR", { maximumFractionDigits: d, minimumFractionDigits: d });
+const clamp = (id, lo, hi) => Math.min(hi, Math.max(lo, Number($(id).value) || 0));
+// Each slider shows its value in its label.
+const UNITS = { power: [0, " W"], voltage: [1, " V"], pf: [2, ""], freq: [2, " Hz"], flow: [1, " L/min"], calib: [0, " imp./L"],
+  goKwh: [0, " kWh"], addKwh: [0, " kWh"], goM3: [1, " m³"], addL: [0, " L"], spikeW: [0, " W"], spikeS: [0, " s"] };
+function showValue(id) {
+  const out = document.querySelector(`label[for=${id}] output`);
+  if (out) out.textContent = fmt($(id).value, UNITS[id][0]) + UNITS[id][1];
+}
+Object.keys(UNITS).forEach((id) => {
+  document.querySelector(`label[for=${id}]`).append(document.createElement("output"));
+  $(id).addEventListener("input", () => showValue(id));
+  showValue(id);
+});
+const store = { get: (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } },
+                set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+
+let token = "", homes = [], timer = null, refresher = null, last = Date.now(), dash = null;
+let extra = { kwh: 0, litres: 0 }, spike = null, sending = false;
+let meter = { energy: 1.5, water: 5.5 };   // just above the "meter reset" tolerance; the API corrects us
+const sendButtons = ["once", "goKwhBtn", "addKwhBtn", "goM3Btn", "addLBtn", "toMargin", "toCross", "spikeBtn"];
+$("key").value = store.get("cartheco-test-key");
+$("key").oninput = () => store.set("cartheco-test-key", $("key").value.trim());
+
+function log(text, ok = true) {
+  const li = document.createElement("li");
+  li.className = ok ? "ok" : "err";
+  li.textContent = new Date().toLocaleTimeString("fr-FR") + "  " + text;
+  $("log").prepend(li);
+  while ($("log").children.length > 40) $("log").lastChild.remove();
+}
+
+async function api(path, opts = {}) {
+  const headers = { "content-type": "application/json", ...(opts.headers || {}) };
+  if (token) headers.Authorization = "Bearer " + token;
+  const res = await fetch(path, { ...opts, headers });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((body && (body.detail?.message || body.message || JSON.stringify(body.detail))) || res.status);
+  return body;
+}
+
+$("login").onclick = async () => {
+  try {
+    token = (await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email: $("email").value.trim(), password: $("pw").value }) })).access_token;
+    homes = await api("/api/households");
+    $("home").innerHTML = homes.map((h, i) => `<option value="${i}">${h.name} · ${h.subscribed_kva} kVA</option>`).join("");
+    $("home").disabled = false;
+    pickHome();
+    $("start").disabled = !!timer;
+    sendButtons.forEach((id) => ($(id).disabled = false));
+    $("status").textContent = "Connecté.";
+    refresh();
+    if (!refresher) refresher = setInterval(refresh, 5000);
+  } catch (e) { $("status").textContent = "Connexion refusée : " + e.message; }
+};
+
+function home() { return homes[Number($("home").value)] || null; }
+function pickHome() {
+  const h = home(); if (!h) return;
+  const dev = h.devices.find((d) => d.kind === "simulator") || h.devices[0];
+  if (dev && dev.id !== $("device").value) { meter = { energy: 1.5, water: 5.5 }; extra = { kwh: 0, litres: 0 }; }
+  $("device").value = dev ? dev.id : "";
+  if (!dev) $("status").textContent = "Ce foyer n'a aucun appareil.";
+}
+$("home").onchange = () => { stop(); dash = null; pickHome(); refresh(); };
+
+async function send(retries = 0) {
+  let retry = false;
+  if (sending) return;             // one request at a time: timestamps must keep increasing
+  if (!$("key").value.trim()) { log("entre la clé DEVICE_API_KEY d'abord", false); return; }
+  sending = true;
+  const now = Date.now(), dt = Math.min(600, (now - last) / 1000); last = now;
+  let power = clamp("power", 0, 23000);
+  if (spike && spike.until > now) power += spike.w; else spike = null;
+  if ($("noise").checked) power *= 1 + (Math.random() - 0.5) * 0.06;
+  power = Math.round(Math.min(23000, power) * 10) / 10;
+  const flow = clamp("flow", 0, 60), v = clamp("voltage", 0, 300), pf = clamp("pf", 0, 1);
+  const sent = { ...extra };        // what this reading carries; clicks during the request stay queued
+  const addL = flow * dt / 60 + sent.litres;
+  const energy = +(meter.energy + power * dt / 3600000 + sent.kwh).toFixed(3);
+  const water = +(meter.water + addL).toFixed(2);
+  const ok = !$("badSignal").checked;
+  const reading = {
+    device_id: $("device").value, timestamp: new Date().toISOString(), signal_ok: ok,
+    electricity: $("elecFault").checked ? null : {
+      voltage_v: v, current_a: Math.min(100, v && pf ? +(power / v / pf).toFixed(2) : 0), power_w: power,
+      energy_kwh: energy, frequency_hz: clamp("freq", 45, 65), power_factor: pf },
+    water: $("waterFault").checked ? null : {
+      flow_l_min: flow, total_l: water, pulses_delta: Math.round(addL * clamp("calib", 1, 10000)), calib_pulses_per_l: clamp("calib", 1, 10000) },
+  };
+  try {
+    await api("/api/readings", { method: "POST", headers: { "X-Device-Key": $("key").value.trim() }, body: JSON.stringify(reading) });
+    // The API keeps counters from faulty or unreliable readings out of the totals, so keep ours only when they count.
+    if (ok && reading.electricity) { meter.energy = energy; extra.kwh = Math.max(0, extra.kwh - sent.kwh); }
+    if (ok && reading.water) { meter.water = water; extra.litres = Math.max(0, extra.litres - sent.litres); }
+    $("counter").textContent = `${fmt(meter.energy, 3)} kWh · ${fmt(meter.water, 1)} L`;
+    const parts = [reading.electricity ? `${fmt(power, 0)} W` : "élec muet", reading.water ? `${fmt(flow)} L/min` : "eau muet"];
+    if (!ok) parts.push("signal peu fiable");
+    log(parts.join(" · ") + ` · compteur ${fmt(meter.energy, 3)} kWh`);
+    setTimeout(refresh, 400);
+  } catch (e) {
+    // "energy_kwh 1.5 is lower than the previous value 101.89": continue from the API's counter
+    const m = String(e.message).match(/(energy_kwh|total_l) [\d.]+ is lower than the previous value ([\d.]+)/);
+    if (m) { if (m[1] === "energy_kwh") meter.energy = parseFloat(m[2]); else meter.water = parseFloat(m[2]); log("compteur repris à " + m[2] + ", renvoi"); retry = true; }
+    else log("refusé : " + e.message, false);
+  } finally { sending = false; }
+  if (retry && retries < 2) return send(retries + 1);
+}
+
+function start() {
+  if (!$("key").value.trim()) { log("entre la clé DEVICE_API_KEY d'abord", false); return; }
+  clearInterval(timer);
+  last = Date.now(); send(); timer = setInterval(send, Number($("interval").value) * 1000);
+  $("start").disabled = true; $("stop").disabled = false;
+}
+function stop() {
+  clearInterval(timer); timer = null;
+  $("start").disabled = !token; $("stop").disabled = true;
+}
+$("start").onclick = start;
+$("stop").onclick = stop;
+$("once").onclick = () => send();
+$("interval").onchange = () => { if (timer) start(); };
+
+// Adding consumption: queued for the next reading, sent at once.
+function addKwh(k, why) {
+  if (!(k > 0)) return;
+  extra.kwh += Math.round(k * 1000) / 1000;
+  log(`+${fmt(k, 1)} kWh ${why || "au prochain envoi"}`);
+  send();
+}
+function addLitres(l, why) {
+  if (!(l > 0)) return;
+  extra.litres += Math.round(l * 100) / 100;
+  log(`+${fmt(l, 0)} L ${why || "au prochain envoi"}`);
+  send();
+}
+$("addKwhBtn").onclick = () => addKwh(Number($("addKwh").value));
+$("addLBtn").onclick = () => addLitres(Number($("addL").value));
+$("goKwhBtn").onclick = () => {
+  if (!dash) return log("attends le tableau de bord", false);
+  const target = Number($("goKwh").value), diff = target - dash.electricity.month_kwh;
+  if (!(diff > 0)) return log(`le mois est déjà à ${fmt(dash.electricity.month_kwh)} kWh : on ne peut pas descendre`, false);
+  addKwh(diff, `pour atteindre ${fmt(target, 1)} kWh`);
+};
+$("goM3Btn").onclick = () => {
+  if (!dash || !dash.water) return log("attends le tableau de bord", false);
+  const target = Number($("goM3").value) * 1000, diff = target - dash.water.month_l;
+  if (!(diff > 0)) return log(`l'eau du mois est déjà à ${fmt(dash.water.month_l / 1000, 2)} m³ : on ne peut pas descendre`, false);
+  addLitres(diff, `pour atteindre ${fmt(target / 1000, 2)} m³`);
+};
+$("toMargin").onclick = () => {
+  const e = dash && dash.electricity; if (!e || e.next_threshold_kwh == null) return log("pas de prochaine tranche", false);
+  const margin = home().alert_margin_kwh ?? 10;
+  addKwh(Math.max(0.5, e.next_threshold_kwh - margin + 1 - e.month_kwh), "pour entrer dans la marge");
+};
+$("toCross").onclick = () => {
+  const e = dash && dash.electricity; if (!e || e.next_threshold_kwh == null) return log("pas de prochaine tranche", false);
+  addKwh(Math.max(0.5, e.next_threshold_kwh + 2 - e.month_kwh), `pour dépasser ${fmt(e.next_threshold_kwh, 0)} kWh`);
+};
+$("spikeBtn").onclick = () => {
+  spike = { w: clamp("spikeW", 0, 23000), until: Date.now() + clamp("spikeS", 1, 600) * 1000 };
+  log(`pic +${fmt(spike.w, 0)} W pendant ${fmt(clamp("spikeS", 1, 600), 0)} s` + (timer ? "" : " (démarre le boîtier pour qu'il soit envoyé)"));
+  if (timer) send();
+};
+document.querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { $("power").value = b.dataset.w; showValue("power"); }));
+document.querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => { $("flow").value = b.dataset.f; showValue("flow"); }));
+
+// The target sliders start at this month's total: a total can only go up.
+function floorSlider(id, current, top) {
+  const el = $(id), lo = Math.ceil(current * 2) / 2;
+  el.max = Math.max(top, Math.ceil(lo * 1.5));
+  el.min = lo;
+  if (Number(el.value) < lo) el.value = lo;
+  showValue(id);
+}
+
+async function refresh() {
+  const h = home(); if (!token || !h) return;
+  try {
+    const d = dash = await api("/api/dashboard", { headers: { "X-Household-Id": h.id } });
+    const e = d.electricity, w = d.water;
+    $("month").textContent = fmt(e.month_kwh) + " kWh ce mois";
+    floorSlider("goKwh", e.month_kwh, 1000);
+    if (w) floorSlider("goM3", w.month_l / 1000, 200);
+    const t = e.tranche, max = t && t.max_qty ? t.max_qty : null, min = t ? t.min_qty : 0;
+    $("fill").style.width = max ? Math.min(100, (e.month_kwh - min) / (max - min) * 100) + "%" : "100%";
+    $("tranche").textContent = t ? `Tranche ${t.index} : ${fmt(min, 0)} à ${max ? fmt(max, 0) : "∞"} kWh, ${t.price_millimes} millimes/kWh`
+      + (e.kwh_to_next_threshold != null ? ` · encore ${fmt(e.kwh_to_next_threshold)} kWh avant ${fmt(e.next_threshold_kwh, 0)}` : "") : "Pas de grille STEG.";
+    const le = d.live && d.live.electricity;
+    $("live").textContent = !d.live ? "aucune mesure" : le.fault ? "capteur muet" : !le.reliable ? "peu fiable"
+      : `${fmt(le.power_w, 0)} W (il y a ${fmt(d.live.age_s, 0)} s)`;
+    $("bill").textContent = e.bill_to_date ? fmt(e.bill_to_date.total_dt, 3) + " DT" : "-";
+    $("forecast").textContent = e.forecast && e.forecast.available && e.forecast.bill
+      ? `${fmt(e.forecast.qty, 0)} kWh · ${fmt(e.forecast.bill.total_dt, 3)} DT` : "pas encore";
+    $("next").textContent = e.next_kwh_price_dt != null ? fmt(e.next_kwh_price_dt, 3) + " DT" : "-";
+    $("water").textContent = w ? fmt(w.month_l / 1000, 2) + " m³" + (w.bill_to_date ? ` · ${fmt(w.bill_to_date.total_dt, 3)} DT` : "") : "-";
+  } catch (e) { $("status").textContent = "Tableau de bord : " + e.message; }
+}
+</script>
+</body>
+</html>

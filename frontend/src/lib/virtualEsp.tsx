@@ -258,6 +258,13 @@ export function VirtualEspProvider({ children }: { children: ReactNode }) {
       setControls: (patch) => setControlsState((c) => ({ ...c, ...patch })),
       deviceId,
       setDeviceId: (v) => {
+        // Another device has its own meter: never carry this one's counter over, or the
+        // first reading would add the whole difference as consumption.
+        if (v !== idRef.current) {
+          meter.current = { energy: 1.5, water: 5.5 };
+          pending.current = { kwh: 0, litres: 0 };
+          setCounters(null);
+        }
         setDeviceIdState(v);
         write(ID_STORE, v);
       },
