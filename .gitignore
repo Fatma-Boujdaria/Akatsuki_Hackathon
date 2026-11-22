@@ -19,10 +19,13 @@ venv/
 # Node / frontend
 node_modules/
 dist/
+# The built 3D page is shipped so it opens without a build
+!sim3d/dist/
 
 # Editors / OS
 .vscode/
 .idea/
+.claude/
 .DS_Store
 
 # TypeScript build cache

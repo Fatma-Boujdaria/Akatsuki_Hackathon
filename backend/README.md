@@ -1,4 +1,4 @@
-# Tranche Guard — Backend
+# Tranche Guard: Backend
 
 FastAPI (Python) + Supabase PostgreSQL. Receives the readings of the ESP32 (or the
 simulator), computes the STEG tranche, the end-of-month forecast, alerts and tips,
@@ -22,7 +22,7 @@ backend/
 ├── supabase/migrations/   # the same tables in SQL (already applied to Akatsuki_db)
 ├── simulator/             # sends the same JSON as the ESP32
 ├── scripts/seed_demo.py   # demo accounts, devices and a month of history
-└── tests/                 # 88 automatic tests
+└── tests/                 # 98 automatic tests
 ```
 
 ## 1. Install (once)

@@ -1,7 +1,7 @@
-# Tranche Guard — Frontend
+# Tranche Guard: Frontend
 
 React + Vite + Tailwind + Recharts dashboard for the Tranche Guard backend
-(`backend/` on the `backend` branch). French UI, built to the **Graphic Charter V1**
+(`backend/` in this repo). French UI, built to the **Graphic Charter V1**
 (Sicily palette, Space Grotesk / Inter / JetBrains Mono, flat hairlined components).
 
 ## Run

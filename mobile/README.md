@@ -25,7 +25,7 @@ The admin panel and the "Contrôle démo" page stay on the website.
 
 ## Build the APK in Android Studio
 
-You need Flutter 3.50 or newer and Android Studio with the **Flutter** and **Dart**
+You need Flutter 3.47 or newer and Android Studio with the **Flutter** and **Dart**
 plugins (Settings → Plugins). Check with `flutter doctor`.
 
 1. Get the code: `git pull` on the `main` branch.
