@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:tranche_guard/api/api.dart';
 import 'package:tranche_guard/api/models.dart';
+import 'package:tranche_guard/widgets/power_picker.dart';
 
 http.Response json(Object body, [int status = 200]) =>
     http.Response.bytes(utf8.encode(jsonEncode(body)), status, headers: {'content-type': 'application/json'});
@@ -130,5 +131,24 @@ void main() {
     final noName = User.fromJson({'id': '2', 'email': 'rim@exemple.tn', 'role': 'household'});
     expect(noName.initial, 'R');
     expect(noName.notifyPrefs.leak, isTrue);
+  });
+
+  test('the home form shows the STEG grid of the chosen power (as the backend)', () {
+    Json row(num min, num? max, int price, String from) =>
+        {'resource': 'electricity', 'min_qty': min, 'max_qty': max, 'price_millimes': price, 'vat_rate': 0.13, 'valid_from': from};
+    final t = Tariffs({
+      'tranches': [
+        row(0, 200, 176, '2026-01-01'), // older grid, ignored
+        row(0, 50, 62, '2026-11-01'), row(50, 100, 96, '2026-11-01'), row(100, 200, 176, '2026-11-01'),
+        row(200, 300, 218, '2026-11-01'), row(300, 500, 341, '2026-11-01'), row(500, null, 414, '2026-11-01'),
+      ],
+      'fees': [],
+    });
+    expect([for (final r in stegBandsFor(t, 2)) r.priceMillimes], [62, 96, 176, 218, 341, 414]);
+    final normal = stegBandsFor(t, 6);
+    expect([for (final r in normal) r.priceMillimes], [176, 218, 341, 414]);
+    expect(normal.first.minQty, 0);
+    expect(isEconomic(2), isTrue);
+    expect(isEconomic(3), isFalse);
   });
 }

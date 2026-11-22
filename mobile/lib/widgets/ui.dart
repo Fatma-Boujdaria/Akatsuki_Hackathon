@@ -313,10 +313,10 @@ class TgChip extends StatelessWidget {
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: onTap,
+          // Sized by its label (no alignment: that would fill a Wrap's whole width).
           child: Container(
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            alignment: Alignment.center,
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               if (icon != null) ...[Icon(icon, size: 16, color: fg), const SizedBox(width: 6)],
               Text(label,

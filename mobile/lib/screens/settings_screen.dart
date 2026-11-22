@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../util/format.dart';
 import '../util/i18n.dart';
 import '../widgets/account_settings.dart';
+import '../widgets/power_picker.dart';
 import '../widgets/status.dart';
 import '../widgets/ui.dart';
 
@@ -156,18 +157,17 @@ class _HouseholdForm extends StatefulWidget {
 
 class _HouseholdFormState extends State<_HouseholdForm> with _Saver {
   late final _name = TextEditingController(text: widget.s.name);
-  late final _kva = TextEditingController(text: num(widget.s.subscribedKva, decimals: 1, fixed: false));
+  late double _kva = widget.s.subscribedKva;
   late final _margin = TextEditingController(text: '${widget.s.alertMarginKwh}');
 
   @override
   void dispose() {
     _name.dispose();
-    _kva.dispose();
     _margin.dispose();
     super.dispose();
   }
 
-  double? get _kvaValue => double.tryParse(_kva.text.replaceAll(',', '.').trim());
+  double? get _kvaValue => _kva;
   int? get _marginValue => int.tryParse(_margin.text.trim());
 
   @override
@@ -183,15 +183,8 @@ class _HouseholdFormState extends State<_HouseholdForm> with _Saver {
         CardTitle(L('Foyer', 'Home', 'الدار')),
         _Field(label: L('Nom du foyer', 'Home name', 'اسم الدار'), controller: _name, error: nameError, onChanged: (_) => setState(() {})),
         const SizedBox(height: 16),
-        _Field(
-          label: L('Puissance souscrite (kVA)', 'Subscribed power (kVA)', 'القوة المشترك فيها (kVA)'),
-          controller: _kva,
-          number: true,
-          suffix: 'kVA',
-          help: L('Indiquée sur ta facture STEG.', 'Shown on your STEG bill.', 'مكتوبة في فاتورة STEG.'),
-          error: kvaError,
-          onChanged: (_) => setState(() {}),
-        ),
+        PowerPicker(kva: _kva, onChanged: (v) => setState(() => _kva = v)),
+        if (kvaError != null) Text(kvaError, style: T.small(context.tg.grenade)),
         const SizedBox(height: 16),
         _Field(
           label: L('Marge d\'alerte (kWh)', 'Alert margin (kWh)', 'هامش التنبيه (kWh)'),

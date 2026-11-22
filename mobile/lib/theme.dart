@@ -1,4 +1,4 @@
-// Tranche Guard design (DESIGN.md at the repo root, same tokens as frontend/src/index.css):
+// Cartheco design (DESIGN.md at the repo root, same tokens as frontend/src/index.css):
 // "App Screens" design, Sicily palette, Plus Jakarta Sans, dark first with a light twin.
 
 import 'package:material_ui/material_ui.dart';

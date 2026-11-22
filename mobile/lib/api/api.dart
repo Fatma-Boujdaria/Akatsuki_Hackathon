@@ -19,7 +19,7 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-/// Client for the Tranche Guard FastAPI backend (same calls as frontend/src/lib/api.ts).
+/// Client for the Cartheco FastAPI backend (same calls as frontend/src/lib/api.ts).
 class Api {
   Api({required this.baseUrl, this.token, this.householdId, this.onUnauthorized, http.Client? client})
       : _client = client ?? http.Client();

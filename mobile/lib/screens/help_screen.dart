@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../util/format.dart';
 import '../util/i18n.dart';
 import '../widgets/fields.dart';
+import '../widgets/power_picker.dart';
 import '../widgets/status.dart';
 import '../widgets/ui.dart';
 import 'assistant_screen.dart';
@@ -108,17 +109,21 @@ class HelpScreen extends StatelessWidget {
                 'كان الماء يجري بلا وقفة ساعتين بين 01:00 و05:00، يجيك تنبيه تسريب. تنجم تبدّل الوقت في الإعدادات.',
               )),
             ]),
-            _Faq(q: L('Pourquoi pas de montant pour l\'eau ?', 'Why no amount for water?', 'علاش ما فماش مبلغ للماء؟'), children: [
+            _Faq(q: L('Quelle puissance (kVA) choisir ?', 'Which power (kVA) should I choose?', 'أنا قوة (kVA) نختار؟'), children: const [PowerHelp()]),
+            _Faq(q: L('Comment est calculée la facture d\'eau ?', 'How is the water bill computed?', 'كيفاش تتحسب فاتورة الماء؟'), children: [
               Text(L(
-                'La grille SONEDE et sa période de facturation n\'ont pas encore été vérifiées sur une vraie facture. Tu vois les litres et les fuites ; les montants et alertes de tranche eau arrivent une fois la grille saisie par l\'administrateur.',
-                'The SONEDE grid and billing period have not been checked on a real bill yet. You see litres and leaks; water amounts and tranche alerts come once the admin enters the grid.',
-                'جدول SONEDE مازال ما تثبّتش في فاتورة حقيقية. تشوف اللترات والتسريبات؛ المبالغ تجي كيف الأدمين يدخّل الجدول.',
+                'La SONEDE facture par trimestre, avec des tranches payées chacune à son prix (hors taxes) : 0 à 20 m³ à 200 millimes le m³, 21 à 40 m³ à 740, 41 à 70 m³ à 1 040, 71 à 100 m³ à 1 490, 101 à 150 m³ à 1 770, au-delà de 150 m³ à 2 310. Cartheco prend ton eau du mois, la projette sur le trimestre pour trouver la tranche, puis montre la part du mois.',
+                'SONEDE bills every quarter, with bands each paid at its own price (before taxes): 0 to 20 m³ at 200 millimes per m³, 21 to 40 m³ at 740, 41 to 70 m³ at 1,040, 71 to 100 m³ at 1,490, 101 to 150 m³ at 1,770, over 150 m³ at 2,310. The app takes your month\'s water, projects it over the quarter to find the band, then shows the month\'s share.',
+                'الـ SONEDE تفوتر كل ثلاثي، كل شريحة بسومها (بلا أداءات): من 0 لـ 20 م³ بـ 200 مليم للمتر، 21 لـ 40 بـ 740، 41 لـ 70 بـ 1040، 71 لـ 100 بـ 1490، 101 لـ 150 بـ 1770، فوق 150 بـ 2310. التطبيق ياخذ ماء الشهر، يحسبو على الثلاثي باش يلقى الشريحة، ويوري نصيب الشهر.',
               )),
+              const SizedBox(height: 8),
+              Text(L('Borne fontaine : 200 millimes/m³. Tourisme : 2 310 millimes/m³.', 'Public fountain: 200 millimes/m³. Tourism: 2,310 millimes/m³.', 'الحنفية العمومية: 200 مليم/م³. السياحة: 2310 مليم/م³.'),
+                  style: T.caption(tg.mute).copyWith(fontSize: 12)),
             ]),
             const SizedBox(height: 12),
             TgCard(
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                title(LucideIcons300.cpu, L('Le boîtier Tranche Guard', 'The Tranche Guard box', 'بواطة Tranche Guard')),
+                title(LucideIcons300.cpu, L('Le boîtier Cartheco', 'The Cartheco box', 'بواطة Cartheco')),
                 bullet(L('ESP32 + PZEM-004T : tension, courant, puissance et énergie.', 'ESP32 + PZEM-004T: voltage, current, power and energy.', 'ESP32 + PZEM-004T: الجهد، التيار، القوة والطاقة.')),
                 bullet(L('YF-S201 après le compteur SONEDE : débit d\'eau (≈ 450 impulsions par litre, à calibrer).',
                     'YF-S201 after the SONEDE meter: water flow (≈ 450 pulses per litre, to calibrate).', 'YF-S201 بعد كونتور SONEDE: دبي الماء (≈ 450 نبضة في اللتر).')),

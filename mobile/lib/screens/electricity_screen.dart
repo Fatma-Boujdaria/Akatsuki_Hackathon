@@ -9,6 +9,7 @@ import '../util/appliances.dart';
 import '../util/format.dart';
 import '../util/i18n.dart';
 import '../widgets/charts.dart';
+import '../widgets/power_picker.dart';
 import '../widgets/ui.dart';
 import 'shell.dart';
 
@@ -124,7 +125,7 @@ class _ElectricityScreenState extends State<ElectricityScreen> {
             TgCard(
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 CardTitle(L('Tranches STEG', 'STEG tranches', 'شرائح STEG'), aside: L('prix par kWh', 'price per kWh', 'السوم لكل kWh')),
-                _TrancheList(tariffs: _tariffs.data, error: _tariffs.error, currentIndex: e?.tranche?.index, used: e?.monthKwh ?? 0),
+                _TrancheList(tariffs: _tariffs.data, error: _tariffs.error, currentIndex: e?.tranche?.index, used: e?.monthKwh ?? 0, kva: d?.subscribedKva ?? 6),
               ]),
             ),
             TgCard(
@@ -270,19 +271,18 @@ class _Measure extends StatelessWidget {
 
 /// "Tranches STEG · prix par kWh": the current band framed in Chams with its progress.
 class _TrancheList extends StatelessWidget {
-  const _TrancheList({required this.tariffs, required this.error, required this.currentIndex, required this.used});
+  const _TrancheList({required this.tariffs, required this.error, required this.currentIndex, required this.used, required this.kva});
   final Tariffs? tariffs;
   final String? error;
   final int? currentIndex;
-  final double used;
+  final double used, kva;
 
   @override
   Widget build(BuildContext context) {
     final tg = context.tg;
     if (tariffs == null) return error != null ? Text(error!, style: T.small(tg.grenade)) : const Skeleton(height: 160);
-    final rows = tariffs!.tranches.where((t) => t.resource == 'electricity').toList()..sort((a, b) => a.minQty.compareTo(b.minQty));
-    final latest = rows.fold<String>('', (a, r) => '${r.j['valid_from'] ?? ''}'.compareTo(a) > 0 ? '${r.j['valid_from']}' : a);
-    final band = rows.where((r) => '${r.j['valid_from'] ?? ''}' == latest).toList();
+    // The grid of this home: economique bands only for 1-2 kVA (as the backend).
+    final band = stegBandsFor(tariffs!, kva);
     final mil = L('mil.', 'mill.', 'مليم');
     String label(TrancheRow r) => r.maxQty == null
         ? L('Plus de ${num(r.minQty)} kWh', 'Over ${num(r.minQty)} kWh', 'أكثر من ${num(r.minQty)} kWh')

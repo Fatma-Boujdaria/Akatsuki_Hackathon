@@ -11,6 +11,7 @@ import '../util/format.dart';
 import '../util/i18n.dart';
 import '../widgets/charts.dart';
 import '../widgets/status.dart';
+import '../widgets/power_picker.dart';
 import '../widgets/ui.dart';
 import 'settings_screen.dart';
 import 'shell.dart';
@@ -178,6 +179,7 @@ class _WaterScreenState extends State<WaterScreen> {
                   child: _Fig(L('Prévision (estimation)', 'Forecast (estimate)', 'التوقّع (تقدير)'),
                       w?.forecast.qty != null ? m3(w!.forecast.qty! / 1000) : '—', tg.waterInk)),
             ]),
+            if (w != null && w.tariffConfigured) _SonedeCard(water: w),
             if (w != null && w.tariffConfigured)
               TgCard(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -278,6 +280,69 @@ class HourlyBars extends StatelessWidget {
           ]),
         ]),
       ),
+    );
+  }
+}
+
+/// "Tranches SONEDE · par trimestre": each band at its own price, the current one framed.
+class _SonedeCard extends StatefulWidget {
+  const _SonedeCard({required this.water});
+  final WaterSummary water;
+  @override
+  State<_SonedeCard> createState() => _SonedeCardState();
+}
+
+class _SonedeCardState extends State<_SonedeCard> {
+  Tariffs? _t;
+  @override
+  void initState() {
+    super.initState();
+    AppScope.read(context).api.tariffs().then((t) => mounted ? setState(() => _t = t) : null).catchError((_) => null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tg = context.tg;
+    final rows = (_t?.tranches ?? const <TrancheRow>[]).where((r) => r.resource == 'water').toList()
+      ..sort((a, b) => a.minQty.compareTo(b.minQty));
+    final latest = rows.fold<String>('', (a, r) => '${r.j['valid_from'] ?? ''}'.compareTo(a) > 0 ? '${r.j['valid_from']}' : a);
+    final band = rows.where((r) => '${r.j['valid_from'] ?? ''}' == latest).toList();
+    final current = widget.water.tranche?.index;
+    final mil = L('mil.', 'mill.', 'مليم');
+    // The month's water at this pace over a quarter, the period SONEDE bills.
+    final quarter = widget.water.monthL / 1000 * 3;
+    return TgCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        CardTitle(L('Tranches SONEDE', 'SONEDE tranches', 'شرائح SONEDE'), aside: L('par trimestre · prix par m³', 'per quarter · price per m³', 'كل ثلاثي · السوم لكل م³')),
+        if (_t == null)
+          const Skeleton(height: 140)
+        else
+          for (final (i, r) in band.indexed)
+            Container(
+              margin: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: current == i + 1
+                  ? BoxDecoration(borderRadius: BorderRadius.circular(kRadiusChip), border: Border.all(color: tg.water, width: 1.5))
+                  : null,
+              child: Row(children: [
+                Expanded(
+                  child: Text(
+                    '${bandLabel(r, unit: 'm³')}${current == i + 1 ? ' · ${L('actuelle', 'current', 'الحالية')}' : ''}',
+                    style: T.small(current == i + 1 ? tg.ink : tg.body).copyWith(fontWeight: current == i + 1 ? FontWeight.w700 : FontWeight.w500),
+                  ),
+                ),
+                Text('${r.priceMillimes} $mil',
+                    style: T.small(current == i + 1 ? tg.waterInk : tg.body).copyWith(fontWeight: current == i + 1 ? FontWeight.w700 : FontWeight.w500)),
+              ]),
+            ),
+        const SizedBox(height: 6),
+        Text(
+          L('À ce rythme, ≈ ${m3(quarter)} sur le trimestre. Chaque tranche est payée à son prix : les 20 premiers m³ à 200 mil., les suivants à 740, etc. Hors taxes.',
+              'At this pace, ≈ ${m3(quarter)} over the quarter. Each tranche is paid at its own price: the first 20 m³ at 200 mill., the next at 740, and so on. Before taxes.',
+              'بالريتم هذا، ≈ ${m3(quarter)} في الثلاثي. كل شريحة بسومها: أول 20 م³ بـ 200 مليم، اللي بعدها بـ 740، إلخ. بلا أداءات.'),
+          style: T.caption(tg.mute).copyWith(fontSize: 12),
+        ),
+      ]),
     );
   }
 }

@@ -33,7 +33,7 @@ class TrancheGuardApp extends StatelessWidget {
         builder: (context, _) => MaterialApp(
           // Keyed by language: every L(...) text is rebuilt when it changes.
           key: ValueKey(state.language),
-          title: 'Tranche Guard',
+          title: 'Cartheco',
           debugShowCheckedModeBanner: false,
           theme: buildTheme(TG.light),
           darkTheme: buildTheme(TG.dark),

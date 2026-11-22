@@ -10,6 +10,7 @@ import '../widgets/appliance_editor.dart';
 import '../widgets/fields.dart';
 import '../widgets/logo.dart';
 import '../widgets/status.dart';
+import '../widgets/power_picker.dart';
 import '../widgets/ui.dart';
 
 // First-time setup (frontend/src/pages/Onboarding.tsx): 1. the home, 2. its appliances,
@@ -30,7 +31,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _name = TextEditingController(text: L('Ma maison', 'My home', 'داري'));
   final _address = TextEditingController();
   final _occupants = TextEditingController();
-  final _kva = TextEditingController(text: '6');
+  double _kva = 6;
   final _margin = TextEditingController(text: '10');
   List<ApplianceCatalogItem> _catalog = [];
   List<ApplianceIn> _items = [];
@@ -57,13 +58,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   void dispose() {
-    for (final c in [_name, _address, _occupants, _kva, _margin]) {
+    for (final c in [_name, _address, _occupants, _margin]) {
       c.dispose();
     }
     super.dispose();
   }
 
-  double get _kvaValue => parseNum(_kva.text) ?? 0;
+  double get _kvaValue => _kva;
   int get _marginValue => (parseNum(_margin.text) ?? 0).round().clamp(0, 200);
 
   Future<void> _run(Future<void> Function() f) async {
@@ -142,8 +143,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              L('Trois étapes pour que Tranche Guard comprenne ton foyer.', 'Three steps so Tranche Guard understands your home.',
-                  'ثلاثة مراحل باش Tranche Guard يفهم الدار متاعك.'),
+              L('Trois étapes pour que Cartheco comprenne ton foyer.', 'Three steps so Cartheco understands your home.',
+                  'ثلاثة مراحل باش Cartheco يفهم الدار متاعك.'),
               style: T.body(tg.mute),
             ),
             const SizedBox(height: 18),
@@ -167,27 +168,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 14),
           TgField(label: L('Adresse ou ville', 'Address or city', 'العنوان ولا المدينة'), controller: _address, hint: 'Tunis, La Marsa'),
           const SizedBox(height: 14),
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(
-              child: TgField(
-                label: L('Occupants', 'Occupants', 'عدد السكان'),
-                controller: _occupants,
-                keyboardType: TextInputType.number,
-                help: L('facultatif', 'optional', 'اختياري'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TgField(
-                label: L('Puissance souscrite', 'Subscribed power', 'القوة المشترك فيها'),
-                controller: _kva,
-                suffixText: 'kVA',
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                help: L('sur ta facture STEG', 'on your STEG bill', 'مكتوبة في فاتورة STEG'),
-                onChanged: (_) => setState(() {}),
-              ),
-            ),
-          ]),
+          TgField(
+            label: L('Occupants', 'Occupants', 'عدد السكان'),
+            controller: _occupants,
+            keyboardType: TextInputType.number,
+            help: L('facultatif', 'optional', 'اختياري'),
+          ),
+          const SizedBox(height: 14),
+          PowerPicker(kva: _kva, onChanged: (v) => setState(() => _kva = v)),
           const SizedBox(height: 14),
           TgField(
             label: L('Marge d\'alerte', 'Alert margin', 'هامش التنبيه'),

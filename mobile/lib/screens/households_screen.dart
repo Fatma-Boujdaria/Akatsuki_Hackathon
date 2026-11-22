@@ -10,6 +10,7 @@ import '../util/i18n.dart';
 import '../widgets/appliance_editor.dart';
 import '../widgets/fields.dart';
 import '../widgets/status.dart';
+import '../widgets/power_picker.dart';
 import '../widgets/ui.dart';
 import 'onboarding_screen.dart';
 
@@ -99,20 +100,20 @@ class _HouseholdFormState extends State<HouseholdForm> {
   late final _name = TextEditingController(text: widget.initial.name);
   late final _address = TextEditingController(text: widget.initial.address ?? '');
   late final _occupants = TextEditingController(text: widget.initial.occupants?.toString() ?? '');
-  late final _kva = TextEditingController(text: f.num(widget.initial.subscribedKva, decimals: 1, fixed: false));
+  late double _kva = widget.initial.subscribedKva;
   late final _margin = TextEditingController(text: '${widget.initial.alertMarginKwh}');
   bool _busy = false;
   String? _error;
 
   @override
   void dispose() {
-    for (final c in [_name, _address, _occupants, _kva, _margin]) {
+    for (final c in [_name, _address, _occupants, _margin]) {
       c.dispose();
     }
     super.dispose();
   }
 
-  double get _kvaValue => parseNum(_kva.text) ?? 0;
+  double get _kvaValue => _kva;
 
   Future<void> _submit() async {
     setState(() {
@@ -150,18 +151,11 @@ class _HouseholdFormState extends State<HouseholdForm> {
           Expanded(child: TgField(label: L('Occupants', 'Occupants', 'السكان'), controller: _occupants, keyboardType: TextInputType.number)),
           const SizedBox(width: 10),
           Expanded(
-            child: TgField(
-              label: 'kVA',
-              controller: _kva,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (_) => setState(() {}),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
             child: TgField(label: L('Marge', 'Margin', 'الهامش'), controller: _margin, suffixText: 'kWh', keyboardType: TextInputType.number),
           ),
         ]),
+        const SizedBox(height: 12),
+        PowerPicker(kva: _kva, onChanged: (v) => setState(() => _kva = v)),
         if (_error != null) ...[const SizedBox(height: 12), TgBanner(tone: BannerTone.broken, child: Text(_error!))],
         const SizedBox(height: 14),
         Row(children: [

@@ -174,9 +174,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 textAlign: TextAlign.center, style: T.h2(tg.ink)),
             const SizedBox(height: 8),
             Text(
-              L('Branche ton boîtier Tranche Guard ou lance le simulateur. Le tableau de bord se remplit dès que la première mesure arrive.',
-                  'Plug in your Tranche Guard box or start the simulator. The dashboard fills in as soon as the first reading arrives.',
-                  'ركّب البواطة متاع Tranche Guard ولا شعّل السيمولاتور. الداشبورد يتعبّى كيف يوصل أول قياس.'),
+              L('Branche ton boîtier Cartheco ou lance le simulateur. Le tableau de bord se remplit dès que la première mesure arrive.',
+                  'Plug in your Cartheco box or start the simulator. The dashboard fills in as soon as the first reading arrives.',
+                  'ركّب البواطة متاع Cartheco ولا شعّل السيمولاتور. الداشبورد يتعبّى كيف يوصل أول قياس.'),
               textAlign: TextAlign.center,
               style: T.body(tg.body),
             ),

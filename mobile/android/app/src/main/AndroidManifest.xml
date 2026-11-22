@@ -1,8 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- The app talks to the Tranche Guard API (release builds need this too). -->
+    <!-- The app talks to the Cartheco API (release builds need this too). -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="Tranche Guard"
+        android:label="Cartheco"
         android:usesCleartextTraffic="true"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

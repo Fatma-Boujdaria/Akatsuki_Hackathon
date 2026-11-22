@@ -1,11 +1,11 @@
 {
-    "name": "Tranche Guard",
-    "short_name": "Tranche Guard",
+    "name": "Cartheco",
+    "short_name": "Cartheco",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0D171F",
     "theme_color": "#1D59BB",
-    "description": "Tranche Guard: vois ta facture avant qu'elle arrive.",
+    "description": "Cartheco: vois ta facture avant qu'elle arrive.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
