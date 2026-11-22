@@ -96,3 +96,21 @@ def _sql() -> str:
 
     path = Path(__file__).resolve().parent.parent / "supabase" / "migrations" / "20261122130000_steg_2022_sonede.sql"
     return "\n".join(l for l in path.read_text(encoding="utf-8").splitlines() if not l.strip().startswith("--"))
+
+
+def test_tariffs_api_reads_and_saves_the_2022_rows(client, db):
+    """GET /api/tariffs must serialise the setting keys of the migration (VAT on the kVA fee,
+    SONEDE period), and the admin screen must be able to save them back unchanged."""
+    from tests.conftest import login, make_user
+
+    for statement in filter(None, (s.strip() for s in _sql().split(";"))):
+        db.execute(text(statement))
+    db.commit()
+    make_user(db, "admin@example.tn", role="admin", with_household=False)
+    admin_h = login(client, "admin@example.tn")
+    res = client.get("/api/tariffs", headers=admin_h)
+    assert res.status_code == 200
+    keys = {f["key"] for f in res.json()["fees"]}
+    assert {"elec_power_fee_vat_permille", "water_billing_period_months"} <= keys
+    assert client.put("/api/tariffs", headers=admin_h, json=res.json()).status_code == 200
+    clear_tariff_cache()

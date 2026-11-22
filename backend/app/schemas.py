@@ -325,7 +325,7 @@ class TrancheRow(BaseModel):
 class FeeRow(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int | None = None
-    key: str = Field(pattern=r"^(elec|water)_[a-z0-9_]+_(per_kva|per_kwh|per_m3|per_month)$", max_length=80)
+    key: str = Field(pattern=r"^(elec|water)_[a-z0-9_]+_(per_kva|per_kwh|per_m3|per_month|vat_permille|period_months)$", max_length=80)
     value_millimes: float = Field(ge=0, le=1_000_000)
     valid_from: date
 
