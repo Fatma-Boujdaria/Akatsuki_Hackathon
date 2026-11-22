@@ -30,3 +30,4 @@ dist/
 
 # dev.cmd: PIDs of the server windows it opened
 .dev-pids.json
+sim3d/node_modules
