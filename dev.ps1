@@ -6,6 +6,10 @@
 #   dev.cmd db         (re)connect backend\.env to Supabase (asks for the database password)
 #   dev.cmd key        copy DEVICE_API_KEY to the clipboard (never printed)
 #   dev.cmd firewall   allow port 8000 for the phone (asks for admin)
+#   dev.cmd sim        start the Python simulator: a reading every 5 s to the API (saved in Supabase)
+#   dev.cmd apk        build the phone app pointed at this PC, copy it to dist\Cartheco.apk,
+#                      install it on a phone plugged in over USB
+#   dev.cmd all        everything: servers, simulator, APK
 # Kept ASCII only so Windows PowerShell 5.1 reads it correctly.
 
 param([string]$Command = "start")
@@ -195,13 +199,13 @@ function Start-Servers {
     Stop-Servers
 
     $api = Start-Process cmd.exe -WorkingDirectory $Backend -PassThru -ArgumentList "/k", `
-        "title Tranche Guard API (close to stop) & `"$VenvPy`" -m uvicorn app.main:app --host 0.0.0.0 --port $ApiPort"
+        "title Cartheco API (close to stop) & `"$VenvPy`" -m uvicorn app.main:app --host 0.0.0.0 --port $ApiPort"
     $web = Start-Process cmd.exe -WorkingDirectory $Frontend -PassThru -ArgumentList "/k", `
-        "title Tranche Guard web (close to stop) & npm.cmd run dev"
+        "title Cartheco web (close to stop) & npm.cmd run dev"
     @{ api = $api.Id; web = $web.Id } | ConvertTo-Json | Set-Content $PidFile
 
     if (Wait-Url "http://localhost:$ApiPort/api/health" 60) { Ok "API answers on port $ApiPort" }
-    else { Fail "API did not start: read the 'Tranche Guard API' window" }
+    else { Fail "API did not start: read the 'Cartheco API' window" }
 
     $code = Test-Login
     if ($code -eq 401) {
@@ -215,7 +219,82 @@ function Start-Servers {
     else { Warn "demo login returned HTTP $code" }
 
     if (Wait-Url "http://localhost:$WebPort" 60) { Ok "web app answers on port $WebPort" }
-    else { Fail "web app did not start: read the 'Tranche Guard web' window" }
+    else { Fail "web app did not start: read the 'Cartheco web' window" }
+}
+
+function Save-Pid($name, $procId) {
+    $saved = @{}
+    if (Test-Path $PidFile) {
+        (Get-Content $PidFile -Raw | ConvertFrom-Json).PSObject.Properties | ForEach-Object { $saved[$_.Name] = $_.Value }
+    }
+    $saved[$name] = $procId
+    $saved | ConvertTo-Json | Set-Content $PidFile
+}
+
+function Get-DemoToken {
+    $body = @{ email = $DemoEmail; password = $DemoPassword } | ConvertTo-Json
+    try {
+        return (Invoke-RestMethod "http://localhost:$ApiPort/api/auth/login" -Method Post -ContentType "application/json" -Body $body -TimeoutSec 10).access_token
+    } catch { return $null }
+}
+
+function Start-Simulator {
+    Step "Starting the simulator"
+    if (-not (Get-Http "http://localhost:$ApiPort/api/health")) { Fail "the API is not running: run 'dev.cmd' first" }
+    # One sender per device: a second simulator (or the web 'Controle demo' page) would mix readings.
+    Stop-Simulator
+    $sim = Start-Process cmd.exe -WorkingDirectory $Backend -PassThru -ArgumentList "/k", `
+        "title Cartheco simulator (close to stop) & `"$VenvPy`" -m simulator.simulator --url http://localhost:$ApiPort"
+    Save-Pid "sim" $sim.Id
+
+    # Proof that readings arrive: the demo home's last reading must be fresh.
+    $token = Get-DemoToken
+    for ($i = 0; $i -lt 20 -and $token; $i++) {
+        Start-Sleep -Seconds 2
+        try {
+            $d = Invoke-RestMethod "http://localhost:$ApiPort/api/dashboard" -Headers @{ Authorization = "Bearer $token" } -TimeoutSec 10
+            if ($d.live -and $d.live.age_s -lt 15) {
+                Ok ("simulator sends readings, saved online in Supabase (last one {0:N0} s ago, {1} W)" -f $d.live.age_s, $d.live.electricity.power_w)
+                Say "Do not use the web 'Controle demo' page at the same time (both send as sim-001)."
+                return
+            }
+        } catch { }
+    }
+    Warn "no fresh reading yet: read the 'Cartheco simulator' window"
+}
+
+function Build-Apk {
+    Step "Building the phone app (APK)"
+    if (-not (Get-Command flutter -ErrorAction SilentlyContinue)) { Fail "Flutter not found. Install it from flutter.dev, then run dev.cmd apk again." }
+    $ip = Get-WifiIp
+    if (-not $ip) { Fail "no Wi-Fi IPv4 address: connect this PC to Wi-Fi so the phone can reach it" }
+    $apiUrl = "http://${ip}:$ApiPort"
+    Say "API address built into the app: $apiUrl (rebuild if this PC's Wi-Fi address changes)"
+    Say "a few minutes ..."
+    Push-Location (Join-Path $Root "mobile")
+    try {
+        & flutter build apk --release "--dart-define=API_URL=$apiUrl"
+        if ($LASTEXITCODE -ne 0) { Fail "flutter build apk failed (see above)" }
+    } finally { Pop-Location }
+    $built = Join-Path $Root "mobile\build\app\outputs\flutter-apk\app-release.apk"
+    $dist = Join-Path $Root "dist"
+    New-Item -ItemType Directory -Force $dist | Out-Null
+    $apk = Join-Path $dist "Cartheco.apk"
+    Copy-Item $built $apk -Force
+    Ok ("APK ready: {0} ({1:N0} MB)" -f $apk, ((Get-Item $apk).Length / 1MB))
+
+    # Install on a phone plugged in over USB (USB debugging on).
+    $adb = Join-Path $env:LOCALAPPDATA "Android\Sdk\platform-tools\adb.exe"
+    if (-not (Test-Path $adb)) { $adb = (Get-Command adb -ErrorAction SilentlyContinue).Source }
+    $phones = if ($adb) { & $adb devices | Select-String "\tdevice$" } else { @() }
+    if ($phones) {
+        Say "installing on the phone plugged in ..."
+        & $adb install -r $apk | Out-Null
+        if ($LASTEXITCODE -eq 0) { Ok "installed on the phone: open Cartheco" } else { Warn "adb install failed: copy dist\Cartheco.apk to the phone and open it" }
+    } else {
+        Say "no phone on USB: copy dist\Cartheco.apk to the phone and open it (allow 'install unknown apps')"
+    }
+    if (-not (Test-FirewallOpen)) { Warn "port $ApiPort is blocked for the phone: run 'dev.cmd firewall' once (asks for admin)" }
 }
 
 function Show-Summary {
@@ -231,7 +310,9 @@ function Show-Summary {
     if (Test-FirewallOpen) { Ok "port $ApiPort is allowed through Windows Firewall" }
     else { Warn "port $ApiPort is blocked for the phone: run 'dev.cmd firewall' once (asks for admin)" }
     Say ""
-    Say "Stop everything: dev.cmd stop   (or close the two server windows)"
+    Say "Simulator      dev.cmd sim    (a reading every 5 s, saved in Supabase)"
+    Say "Phone APK      dev.cmd apk    (dist\Cartheco.apk, installed if a phone is on USB)"
+    Say "Stop everything: dev.cmd stop   (or close the server windows)"
 }
 
 switch ($Command.ToLower()) {
@@ -244,7 +325,22 @@ switch ($Command.ToLower()) {
     "stop" {
         Step "Stopping"
         Stop-Servers
-        Ok "API and web app stopped"
+        Stop-Simulator
+        Ok "API, web app and simulator stopped"
+    }
+    "sim" {
+        Start-Simulator
+    }
+    "apk" {
+        Build-Apk
+    }
+    "all" {
+        Setup-Backend
+        Setup-Frontend
+        Start-Servers
+        Start-Simulator
+        Build-Apk
+        Show-Summary
     }
     "status" {
         Step "Status"
@@ -273,5 +369,5 @@ switch ($Command.ToLower()) {
         catch { Fail "cancelled" }
         if (Test-FirewallOpen) { Ok "port $ApiPort allowed for the phone" } else { Warn "rule not added" }
     }
-    default { Fail "unknown command '$Command'. Use: start, stop, status, key, firewall" }
+    default { Fail "unknown command '$Command'. Use: start, stop, status, sim, apk, all, db, key, firewall" }
 }
