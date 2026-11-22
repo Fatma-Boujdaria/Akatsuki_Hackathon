@@ -5,6 +5,8 @@ of the scenario catalogue played in the house, with the Cartheco app on a phone.
 
 **Open it:** double-click `dist/cartheco-3d.html` (one offline file, no server needed).
 
+**Watch it:** [cartheco-3d.mp4](cartheco-3d.mp4) is a recording of the full tour (2 min 35 s, 1080p).
+
 ## What plays
 
 The auto tour loops over two parts (about 2 min 40 s). The **Story** buttons jump to either one.

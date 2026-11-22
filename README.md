@@ -15,7 +15,7 @@ same JSON to the backend, so the apps work the same in the demo and with the har
 │                forecast, alerts, tips, AI assistant, admin API, device simulator, tests
 ├── frontend/    React + Vite + Tailwind web app (dashboard, admin panel, Contrôle ESP)
 ├── mobile/      Flutter Android app (same features as the web app, FR / EN / AR)
-├── sim3d/       3D simulation of the house and the box (open sim3d/dist/cartheco-3d.html)
+├── sim3d/       3D simulation of the house and the box, plus its video (cartheco-3d.mp4)
 ├── docs/        Pitch pages and the scenario catalogue
 ├── brand/       CarthEco logo (SVG) and brand sheet
 ├── DESIGN.md    Design tokens shared by the web and the phone app
@@ -50,7 +50,9 @@ its own README.
 - [docs/scenario.html](docs/scenario.html): the pitch, from installation to impact.
 - [docs/cartheco-scenarios.html](docs/cartheco-scenarios.html) and
   [docs/SCENARIOS.md](docs/SCENARIOS.md): every situation the system handles and what the user sees.
-- [sim3d/dist/cartheco-3d.html](sim3d/dist/cartheco-3d.html): a full day in the house, in 3D.
+- [sim3d/cartheco-3d.mp4](sim3d/cartheco-3d.mp4): video of the 3D simulation (2 min 35 s),
+  from installing the box to a full day in the house.
+- [sim3d/dist/cartheco-3d.html](sim3d/dist/cartheco-3d.html): the same simulation, interactive.
 - [backend/docs/EXPLAINED.md](backend/docs/EXPLAINED.md): the backend code, file by file.
 
 ## Features
