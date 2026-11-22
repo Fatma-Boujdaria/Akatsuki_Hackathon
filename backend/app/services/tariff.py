@@ -13,10 +13,20 @@ Fee keys follow a naming rule so new fees need no code change:
   suffix  _per_kva                -> x subscribed kVA, once a month
           _per_kwh / _per_m3      -> x quantity consumed
           _per_month              -> flat amount once a month
+Two settings live in the same table (value in the value_millimes column):
+  elec_power_fee_vat_permille     -> VAT on the kVA fee, per mille (190 = 19 %)
+  water_billing_period_months     -> bands are written per billing period (3 for
+                                     SONEDE's quarter); they are scaled to a month
+
+STEG low-voltage table of 1 May 2022 (tarifsbt_fr.pdf): the "tranche economique"
+bands (1-50 kWh at 62, 51-100 at 96 millimes) only exist for 1 and 2 kVA homes; above
+2 kVA the first band is priced like 101-200 kWh. Tariff.for_home(kva) gives the grid of
+one home. The energy transition fund (1 mill/kWh) is waived for economique homes
+using 100 kWh or less in the month.
 """
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from typing import Literal
 
@@ -30,6 +40,12 @@ PricingMode = Literal["all_kwh", "progressive"]
 FEE_PREFIX = {"electricity": "elec_", "water": "water_"}
 PER_UNIT_SUFFIX = {"electricity": "_per_kwh", "water": "_per_m3"}
 UNIT = {"electricity": "kWh", "water": "m3"}
+
+ECONOMIC_MAX_KVA = 2.0  # tranche economique: 1 and 2 kVA
+ECONOMIC_MAX_KWH = 100.0  # its own bands stop at 100 kWh a month
+TRANSITION_FUND_KEY = "transition_fund"  # fee waived for small economique months
+POWER_FEE_VAT_KEY = "elec_power_fee_vat_permille"
+WATER_PERIOD_KEY = "water_billing_period_months"
 
 
 @dataclass(frozen=True)
@@ -48,6 +64,19 @@ class Tariff:
     tranches: tuple[Tranche, ...]  # sorted by min_qty
     fees: dict[str, float]  # key -> millimes, only this resource's fees
     pricing_mode: PricingMode = "all_kwh"
+    economic: bool = False  # set by for_home() for a 1-2 kVA home
+
+    def for_home(self, subscribed_kva: float) -> "Tariff":
+        """The grid of one home: economique bands only for 1 and 2 kVA."""
+        if self.resource != "electricity":
+            return self
+        if subscribed_kva <= ECONOMIC_MAX_KVA:
+            return replace(self, economic=True)
+        kept = [t for t in self.tranches if t.max_qty is None or t.max_qty > ECONOMIC_MAX_KWH]
+        if not kept or len(kept) == len(self.tranches):
+            return self
+        kept[0] = replace(kept[0], min_qty=0.0)
+        return replace(self, tranches=tuple(replace(t, index=i + 1) for i, t in enumerate(kept)))
 
     @property
     def thresholds(self) -> list[float]:
@@ -71,6 +100,16 @@ class Tariff:
     @property
     def per_unit_fee_millimes(self) -> float:
         return self._fee_sum(PER_UNIT_SUFFIX[self.resource])
+
+    def per_unit_fee_for(self, qty: float) -> float:
+        """Per-unit taxes of a month of `qty`, with the small-economique-month waiver."""
+        suffix = PER_UNIT_SUFFIX[self.resource]
+        waive = self.economic and qty <= ECONOMIC_MAX_KWH
+        return sum(v for k, v in self.fees.items() if k.endswith(suffix) and not (waive and TRANSITION_FUND_KEY in k))
+
+    @property
+    def power_fee_vat_rate(self) -> float:
+        return self.fees.get(POWER_FEE_VAT_KEY, 0.0) / 1000.0
 
     @property
     def per_kva_fee_millimes(self) -> float:
@@ -111,9 +150,11 @@ def compute_bill(tariff: Tariff, qty: float, subscribed_kva: float = 0.0) -> Bil
         # Threshold effect: the band reached prices every unit of the month.
         energy = qty * reached.price_millimes
 
-    vat = energy * reached.vat_rate  # 7 % up to 300 kWh, 13 % above (rate stored per band)
-    fixed = tariff.per_kva_fee_millimes * subscribed_kva + tariff.flat_fee_millimes
-    taxes = qty * tariff.per_unit_fee_millimes
+    power_fee = tariff.per_kva_fee_millimes * subscribed_kva
+    # Energy VAT stored per band (13 % residential since 2022), VAT on the kVA fee from the fees.
+    vat = energy * reached.vat_rate + power_fee * tariff.power_fee_vat_rate
+    fixed = power_fee + tariff.flat_fee_millimes
+    taxes = qty * tariff.per_unit_fee_for(qty)
     return Bill(
         qty=round(qty, 3),
         tranche_index=reached.index,
@@ -128,7 +169,7 @@ def compute_bill(tariff: Tariff, qty: float, subscribed_kva: float = 0.0) -> Bil
 def unit_price_dt(tariff: Tariff, qty: float) -> float:
     """Cost of one more unit inside the current band, VAT and per-unit taxes included."""
     t = tariff.tranche_for(qty)
-    return _dt(t.price_millimes * (1 + t.vat_rate) + tariff.per_unit_fee_millimes)
+    return _dt(t.price_millimes * (1 + t.vat_rate) + tariff.per_unit_fee_for(qty))
 
 
 def crossing_extra_cost_dt(tariff: Tariff, threshold: float, subscribed_kva: float) -> float:
@@ -162,7 +203,12 @@ def load_tariff(db: Session, resource: str, on: date, pricing_mode: PricingMode 
     """Grid in force on `on` (rows with the latest valid_from <= on), cached.
 
     Returns None when no band exists (e.g. SONEDE water grid not entered yet).
+    Water uses its own pricing mode (SONEDE: each band at its own price).
     """
+    if resource == "water":
+        from app.config import get_settings  # local import: settings read at call time
+
+        pricing_mode = get_settings().water_pricing_mode
     key = (resource, on, pricing_mode)
     hit = _cache.get(key)
     if hit is not None and time.monotonic() - hit[0] < _CACHE_TTL_S:
@@ -204,10 +250,22 @@ def _read_tariff(db: Session, resource: str, on: date, pricing_mode: PricingMode
         if fee.key.startswith(prefix) and (fee.key not in fees or fee.valid_from > fees[fee.key][0]):
             fees[fee.key] = (fee.valid_from, float(fee.value_millimes))
 
+    fee_values = {k: v for k, (_, v) in fees.items()}
+
+    # Bands written per billing period (SONEDE: per quarter) are scaled to one month, so
+    # thresholds, alerts and bills stay monthly. With progressive pricing this is exact:
+    # the bill of a month is a third of the bill of a quarter used at the same pace.
+    period = fee_values.get(WATER_PERIOD_KEY, 1.0) if resource == "water" else 1.0
+    if period and period != 1.0:
+        tranches = tuple(
+            replace(t, min_qty=t.min_qty / period, max_qty=None if t.max_qty is None else t.max_qty / period)
+            for t in tranches
+        )
+
     return Tariff(
         resource=resource,
         valid_from=valid_from,
         tranches=tranches,
-        fees={k: v for k, (_, v) in fees.items()},
+        fees=fee_values,
         pricing_mode=pricing_mode,
     )

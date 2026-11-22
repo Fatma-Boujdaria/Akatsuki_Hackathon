@@ -64,6 +64,7 @@ def compute_scores(db: Session, household: Household, now: datetime) -> list[Sco
     if first is None:
         return []
     tariff = tariff_engine.load_tariff(db, "electricity", clock.local_date(now))
+    tariff = tariff.for_home(float(household.subscribed_kva)) if tariff else None
     today = clock.local_date(now)
     scores = []
     for offset in range(HISTORY_DAYS - 1, -1, -1):

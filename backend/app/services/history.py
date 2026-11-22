@@ -62,6 +62,7 @@ def build_history(db: Session, household: Household, now: datetime, months: int 
         kwh, litres = totals.get(key, (0.0, 0.0))
         first = date.fromisoformat(f"{key}-01")
         elec_tariff = tariff_engine.load_tariff(db, "electricity", first, settings.tariff_pricing_mode)
+        elec_tariff = elec_tariff.for_home(kva) if elec_tariff else None
         water_tariff = tariff_engine.load_tariff(db, "water", first, settings.tariff_pricing_mode)
         bill = tariff_engine.compute_bill(elec_tariff, kwh, kva) if elec_tariff and kwh > 0 else None
         water_bill = (

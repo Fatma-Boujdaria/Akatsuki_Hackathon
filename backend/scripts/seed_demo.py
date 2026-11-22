@@ -31,7 +31,9 @@ from app.models import Alert, Appliance, BadgeEarned, Device, Household, Reading
 from app.security import generate_api_key, hash_api_key, hash_password
 from app.services import tariff as tariff_engine
 
-TARIFF_SEED_SQL = Path(__file__).resolve().parent.parent / "supabase" / "migrations" / "20261121183806_seed_tariffs.sql"
+MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "supabase" / "migrations"
+# The first STEG grid, then the STEG 2022 table and the SONEDE grid (both are data only).
+TARIFF_SEED_SQLS = [MIGRATIONS_DIR / "20261121183806_seed_tariffs.sql", MIGRATIONS_DIR / "20261122130000_steg_2022_sonede.sql"]
 SIM_DEVICE_ID = "sim-001"
 ESP32_DEVICE_ID = "tg-001"
 SLOT = timedelta(minutes=15)
@@ -40,10 +42,11 @@ SLOT = timedelta(minutes=15)
 def ensure_tariffs(db: Session) -> None:
     if db.scalar(select(TariffTranche.id).limit(1)) is not None:
         return
-    sql = "\n".join(line for line in TARIFF_SEED_SQL.read_text().splitlines() if not line.strip().startswith("--"))
-    for statement in filter(None, (s.strip() for s in sql.split(";"))):
-        db.execute(text(statement))
-    print("  tariffs: STEG grid inserted from the seed migration")
+    for path in TARIFF_SEED_SQLS:
+        sql = "\n".join(line for line in path.read_text(encoding="utf-8").splitlines() if not line.strip().startswith("--"))
+        for statement in filter(None, (s.strip() for s in sql.split(";"))):
+            db.execute(text(statement))
+    print("  tariffs: STEG and SONEDE grids inserted from the seed migrations")
 
 
 def ensure_user(db: Session, email: str, password: str | None, role: str) -> tuple[User, str | None]:
@@ -80,6 +83,7 @@ def backfill_history(db: Session, household: Household, device_id: str, target_r
     month_hours = clock.hours_between(month_start, month_end)
     elapsed_hours = clock.hours_between(month_start, now)
     tariff = tariff_engine.load_tariff(db, "electricity", clock.local_date(now))
+    tariff = tariff.for_home(float(household.subscribed_kva)) if tariff else None
     first_threshold = tariff.thresholds[0] if tariff and tariff.thresholds else 200.0
     target_kwh = target_ratio * first_threshold * elapsed_hours / month_hours
 

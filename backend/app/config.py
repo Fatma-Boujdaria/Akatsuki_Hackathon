@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     # "progressive": each kWh band is priced at its own tranche. Switch after
     # checking a real STEG bill (open question in the PRD).
     tariff_pricing_mode: Literal["all_kwh", "progressive"] = "all_kwh"
+    # SONEDE water: each band of m3 is paid at its own price.
+    water_pricing_mode: Literal["all_kwh", "progressive"] = "progressive"
 
     device_online_window_s: int = 30  # no reading for 30 s -> "Appareil hors ligne"
     offline_alert_after_s: int = 300  # no reading for 5 min -> device_offline alert

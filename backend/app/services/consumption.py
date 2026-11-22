@@ -142,6 +142,8 @@ def build_status(household: Household, resource: str, usage: Usage, now: datetim
     settings = get_settings()
     to_tariff_unit = 1.0 if resource == "electricity" else 1 / 1000.0  # SONEDE bills in m3
     tariff = tariff_engine.load_tariff(db, resource, clock.local_date(now), settings.tariff_pricing_mode)
+    if tariff is not None:
+        tariff = tariff.for_home(float(household.subscribed_kva))  # economique grid for 1-2 kVA
     billed = usage.month_qty * to_tariff_unit
     billed_forecast = None if usage.forecast_qty is None else usage.forecast_qty * to_tariff_unit
     status = ResourceStatus(
