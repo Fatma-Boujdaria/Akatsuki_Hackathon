@@ -154,9 +154,9 @@ class _ElectricityScreenState extends State<ElectricityScreen> {
                       Text(e.forecast.assumption, style: T.caption(tg.mute).copyWith(fontSize: 12)),
                       if (e.crossingExtraCostDt != null && e.nextThreshold != null)
                         Text(
-                          L('Passer ${num(e.nextThreshold!)} kWh : ≈ +${dt(e.crossingExtraCostDt!)}',
-                              'Crossing ${num(e.nextThreshold!)} kWh: ≈ +${dt(e.crossingExtraCostDt!)}',
-                              'تعدّي ${num(e.nextThreshold!)} kWh: ≈ +${dt(e.crossingExtraCostDt!)}'),
+                          L('Passer ${kwh(e.nextThreshold!)} : ≈ +${dt(e.crossingExtraCostDt!)}',
+                              'Crossing ${kwh(e.nextThreshold!)}: ≈ +${dt(e.crossingExtraCostDt!)}',
+                              'تعدّي ${kwh(e.nextThreshold!)}: ≈ +${dt(e.crossingExtraCostDt!)}'),
                           style: T.caption(tg.mute).copyWith(fontSize: 12),
                         ),
                     ]),

@@ -385,7 +385,7 @@ class TrancheCard extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Wrap(alignment: WrapAlignment.spaceBetween, spacing: 12, children: [
-          Text('${kwhValue(view.used)}${view.next != null ? ' / ${num(view.next!)}' : ''} kWh', style: T.caption(tg.mute).copyWith(fontSize: 12)),
+          Text(ltr('${kwhValue(view.used)}${view.next != null ? ' / ${num(view.next!)}' : ''} kWh'), style: T.caption(tg.mute).copyWith(fontSize: 12)),
           Text(
             view.forecast != null
                 ? '${L('Prévision fin du mois', 'End-of-month forecast', 'التوقع آخر الشهر')} : ${kwh(view.forecast!)}'
@@ -405,9 +405,9 @@ class TrancheCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                L('Franchir ${num(view.next!)} kWh ajouterait ≈ ${dt(e.crossingExtraCostDt!)} (estimation).',
-                    'Crossing ${num(view.next!)} kWh would add ≈ ${dt(e.crossingExtraCostDt!)} (estimate).',
-                    'كان تتعدّى ${num(view.next!)} kWh تزيد ≈ ${dt(e.crossingExtraCostDt!)} (تقدير).'),
+                L('Franchir ${kwh(view.next!)} ajouterait ≈ ${dt(e.crossingExtraCostDt!)} (estimation).',
+                    'Crossing ${kwh(view.next!)} would add ≈ ${dt(e.crossingExtraCostDt!)} (estimate).',
+                    'كان تتعدّى ${kwh(view.next!)} تزيد ≈ ${dt(e.crossingExtraCostDt!)} (تقدير).'),
                 style: T.caption(tg.mute).copyWith(fontSize: 12),
               ),
             ),

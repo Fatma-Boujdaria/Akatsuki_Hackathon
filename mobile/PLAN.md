@@ -32,7 +32,7 @@ checked on the USB phone (SM A175F) with `adb reverse tcp:8000 tcp:8000`.
 - [x] 9. Appliances editor, Settings, Profile (name, language, password, logout everywhere,
       delete account), Help and support (FAQ, contact form)
       | verify: add / edit / delete an appliance; send a support message; delete the test account
-- [ ] 10. Full walkthrough FR / EN / AR, light / dark, API stopped (error states); README update;
+- [x] 10. Full walkthrough FR / EN / AR, light / dark, API stopped (error states); README update;
       pre-commit review
       | verify: every acceptance criterion in SPEC.md ticked
 
@@ -51,3 +51,8 @@ checked on the USB phone (SM A175F) with `adb reverse tcp:8000 tcp:8000`.
   fontTools, because Flutter does not map fontWeight onto a variable font's wght axis.
 - 2026-11-22: localizations come from material_ui (it already ships GlobalMaterialLocalizations);
   flutter_localizations would clash with it.
+- 2026-11-22: the phone stayed unplugged, so every slice was checked on the web build at phone
+  size against the local API (demo account and a test account, deleted at the end). A run on
+  the SM A175F is still to do.
+- 2026-11-22: numbers with units are wrapped in Unicode isolates in Arabic (like <bdi> on the
+  web) so they read "100 kWh", not "kWh 100".

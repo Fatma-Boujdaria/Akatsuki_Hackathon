@@ -36,28 +36,32 @@ String num(double value, {int decimals = 0, bool fixed = true}) {
   return frac.isEmpty ? '$sign$buf' : '$sign$buf$point$frac';
 }
 
+/// A number with its unit stays "100 kWh" inside Arabic text (Unicode isolate,
+/// like <bdi dir="ltr"> on the web). Nothing changes in French and English.
+String ltr(String s) => isRtl ? '\u2066$s\u2069' : s;
+
 /// kWh left / used: integer from 10, one decimal below (dropped when round).
 String kwhValue(double v) => v.abs() >= 10 ? num(v.roundToDouble()) : num(v, decimals: 1, fixed: false);
-String kwh(double v) => '${kwhValue(v)}${nbsp}kWh';
-String watts(double v) => '${num(v.roundToDouble())}${nbsp}W';
-String flow(double v) => '${num(v, decimals: 1)}${nbsp}L/min';
-String litres(double v) => '${num(v.roundToDouble())}${nbsp}L';
-String m3(double v) => '${num(v, decimals: v < 10 ? 2 : 1, fixed: false)}${nbsp}m³';
-String volts(double v) => '${num(v, decimals: 1)}${nbsp}V';
-String amps(double v) => '${num(v, decimals: 2)}${nbsp}A';
-String hertz(double v) => '${num(v, decimals: 1)}${nbsp}Hz';
+String kwh(double v) => ltr('${kwhValue(v)}${nbsp}kWh');
+String watts(double v) => ltr('${num(v.roundToDouble())}${nbsp}W');
+String flow(double v) => ltr('${num(v, decimals: 1)}${nbsp}L/min');
+String litres(double v) => ltr('${num(v.roundToDouble())}${nbsp}L');
+String m3(double v) => ltr('${num(v, decimals: v < 10 ? 2 : 1, fixed: false)}${nbsp}m³');
+String volts(double v) => ltr('${num(v, decimals: 1)}${nbsp}V');
+String amps(double v) => ltr('${num(v, decimals: 2)}${nbsp}A');
+String hertz(double v) => ltr('${num(v, decimals: 1)}${nbsp}Hz');
 
 /// Unit price: 3 decimals, DT after.
-String dtUnit(double v) => '${num(v, decimals: 3)}${nbsp}DT';
+String dtUnit(double v) => ltr('${num(v, decimals: 3)}${nbsp}DT');
 
 /// Forecast amount: rounded, with ≈.
-String dtRound(double v) => '≈$nbsp${num(v.roundToDouble())}${nbsp}DT';
+String dtRound(double v) => ltr('≈$nbsp${num(v.roundToDouble())}${nbsp}DT');
 
 /// An estimated amount (cost of a jump, a saving): precision follows the size.
 String dt(double v) {
   final a = v.abs();
   final d = a < 10 ? 2 : (a < 100 ? 1 : 0);
-  return '${num(v, decimals: d, fixed: false)}${nbsp}DT';
+  return ltr('${num(v, decimals: d, fixed: false)}${nbsp}DT');
 }
 
 // ---- Dates -------------------------------------------------------------------------
